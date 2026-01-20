@@ -25,33 +25,56 @@ const sections = [
 ];
 
 export default function Sidebar() {
+  let navIndex = 0;
+
   return (
-    <aside className="flex h-full flex-col border-r border-slate-200 bg-white p-6">
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold">COD Merchant</h1>
-        <p className="text-xs text-slate-500">Admin Console</p>
+    <aside className="soft-panel rise-fade flex w-full flex-col gap-8 rounded-3xl px-6 py-7 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:max-w-[300px]">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-lg font-semibold text-white shadow-lg">
+          CM
+        </div>
+        <div>
+          <h1 className="font-display text-xl leading-tight">COD Merchant</h1>
+          <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted-ink)]">
+            Admin Console
+          </p>
+        </div>
       </div>
+
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
+        <p className="font-semibold uppercase tracking-[0.2em] text-[var(--ink)]">Pulse</p>
+        <p className="mt-2 leading-relaxed">
+          Review access, approve merchants, and map permissions with clarity.
+        </p>
+      </div>
+
       <nav className="space-y-6">
         {sections.map((section) => (
           <div key={section.title}>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--muted-ink)]">
               {section.title}
             </h2>
-            <div className="flex flex-col gap-1">
-              {section.links.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'rounded-md px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100',
-                      isActive && 'bg-slate-100 text-slate-900'
-                    )
-                  }
-                >
-                  {link.label}
-                </NavLink>
-              ))}
+            <div className="flex flex-col gap-2">
+              {section.links.map((link) => {
+                const delay = `${navIndex * 70}ms`;
+                navIndex += 1;
+                return (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    style={{ animationDelay: delay }}
+                    className={({ isActive }) =>
+                      cn(
+                        'stagger-item rounded-xl border border-transparent px-4 py-2 text-sm font-medium text-[var(--muted-ink)] transition hover:border-[var(--border)] hover:bg-[var(--surface)]',
+                        isActive &&
+                          'border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--ink)] shadow-sm'
+                      )
+                    }
+                  >
+                    {link.label}
+                  </NavLink>
+                );
+              })}
             </div>
           </div>
         ))}
