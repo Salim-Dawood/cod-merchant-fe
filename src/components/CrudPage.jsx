@@ -41,7 +41,10 @@ function formatValue(value) {
   return String(value);
 }
 
-export default function CrudPage({ resource }) {
+export default function CrudPage({ resource, permissions = [] }) {
+  const canRead = resource.permissions?.read
+    ? permissions.includes(resource.permissions.read)
+    : true;
   const [rows, setRows] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -54,6 +57,8 @@ export default function CrudPage({ resource }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoRole, setInfoRole] = useState(null);
   const [infoPermissions, setInfoPermissions] = useState([]);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fields = useMemo(() => resource.fields, [resource.fields]);
   const roleConfig = roleInfoConfig[resource.key];
@@ -225,15 +230,26 @@ export default function CrudPage({ resource }) {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this record?')) {
-      return;
-    }
     try {
       await api.remove(resource.key, id);
       await load();
     } catch (err) {
       setError(err.message || 'Failed to delete');
     }
+  };
+
+  const openDelete = (row) => {
+    setDeleteTarget(row);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+    await handleDelete(deleteTarget.id);
+    setDeleteOpen(false);
+    setDeleteTarget(null);
   };
 
   const headers = ['id', ...fields.map((field) => field.key)];
@@ -277,6 +293,17 @@ export default function CrudPage({ resource }) {
 
   const statusPills = Object.entries(stats.statusCounts || {}).slice(0, 3);
 
+  if (!canRead) {
+    return (
+      <div className="surface-panel rise-fade rounded-3xl px-6 py-8">
+        <h2 className="font-display text-2xl">No access</h2>
+        <p className="mt-2 text-sm text-[var(--muted-ink)]">
+          You do not have permission to view this section.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="surface-panel rise-fade rounded-3xl px-6 py-5">
@@ -299,7 +326,13 @@ export default function CrudPage({ resource }) {
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted-ink)]">Highest ID</p>
               <p className="text-lg font-semibold">{stats.maxId || '-'}</p>
             </div>
-            <Button onClick={openCreate}>New Record</Button>
+            {resource.permissions?.create ? (
+              permissions.includes(resource.permissions.create) && (
+                <Button onClick={openCreate}>New Record</Button>
+              )
+            ) : (
+              <Button onClick={openCreate}>New Record</Button>
+            )}
           </div>
         </div>
         {statusPills.length > 0 && (
@@ -383,12 +416,18 @@ export default function CrudPage({ resource }) {
                           Info
                         </Button>
                       )}
-                      <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleDelete(row.id)}>
-                        Delete
-                      </Button>
+                      {(!resource.permissions?.update ||
+                        permissions.includes(resource.permissions.update)) && (
+                        <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
+                          Edit
+                        </Button>
+                      )}
+                      {(!resource.permissions?.delete ||
+                        permissions.includes(resource.permissions.delete)) && (
+                        <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -511,6 +550,33 @@ export default function CrudPage({ resource }) {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogTrigger asChild>
+          <span />
+        </DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete record?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteTarget && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--muted-ink)]">
+              Deleting ID #{deleteTarget.id}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,6 +3,12 @@ const resources = {
     {
       key: 'platform-admins',
       title: 'Platform Admins',
+      permissions: {
+        read: 'view-platform-admin',
+        create: 'create-platform-admin',
+        update: 'update-platform-admin',
+        delete: 'delete-platform-admin'
+      },
       fields: [
         {
           key: 'platform_role_id',
@@ -27,6 +33,12 @@ const resources = {
     {
       key: 'platform-roles',
       title: 'Platform Roles',
+      permissions: {
+        read: 'view-platform-role',
+        create: 'create-platform-role',
+        update: 'update-platform-role',
+        delete: 'delete-platform-role'
+      },
       fields: [
         { key: 'name', label: 'Name', type: 'text', required: true },
         { key: 'description', label: 'Description', type: 'text' },
@@ -36,6 +48,12 @@ const resources = {
     {
       key: 'platform-permissions',
       title: 'Platform Permissions',
+      permissions: {
+        read: 'view-platform-permission',
+        create: 'create-platform-permission',
+        update: 'update-platform-permission',
+        delete: 'delete-platform-permission'
+      },
       fields: [
         { key: 'key_name', label: 'Key', type: 'text', required: true },
         { key: 'description', label: 'Description', type: 'text' },
@@ -45,6 +63,12 @@ const resources = {
     {
       key: 'platform-role-permissions',
       title: 'Platform Role Permissions',
+      permissions: {
+        read: 'view-platform-role-permission',
+        create: 'create-platform-role-permission',
+        update: 'update-platform-role-permission',
+        delete: 'delete-platform-role-permission'
+      },
       fields: [
         {
           key: 'platform_role_id',
@@ -69,6 +93,12 @@ const resources = {
     {
       key: 'merchants',
       title: 'Merchants',
+      permissions: {
+        read: 'view-merchant',
+        create: 'create-merchant',
+        update: 'update-merchant',
+        delete: 'delete-merchant'
+      },
       fields: [
         { key: 'merchant_code', label: 'Code', type: 'text', required: true },
         { key: 'name', label: 'Name', type: 'text', required: true },
@@ -89,6 +119,12 @@ const resources = {
     {
       key: 'branches',
       title: 'Branches',
+      permissions: {
+        read: 'view-branch',
+        create: 'create-branch',
+        update: 'update-branch',
+        delete: 'delete-branch'
+      },
       fields: [
         {
           key: 'merchant_id',
@@ -120,6 +156,12 @@ const resources = {
     {
       key: 'users',
       title: 'Users',
+      permissions: {
+        read: 'view-user',
+        create: 'create-user',
+        update: 'update-user',
+        delete: 'delete-user'
+      },
       fields: [
         {
           key: 'merchant_id',
@@ -156,6 +198,12 @@ const resources = {
     {
       key: 'permissions',
       title: 'Permissions',
+      permissions: {
+        read: 'view-permission',
+        create: 'create-permission',
+        update: 'update-permission',
+        delete: 'delete-permission'
+      },
       fields: [
         { key: 'key_name', label: 'Key', type: 'text', required: true },
         { key: 'description', label: 'Description', type: 'text' },
@@ -165,6 +213,12 @@ const resources = {
     {
       key: 'branch-roles',
       title: 'Branch Roles',
+      permissions: {
+        read: 'view-branch-role',
+        create: 'create-branch-role',
+        update: 'update-branch-role',
+        delete: 'delete-branch-role'
+      },
       fields: [
         {
           key: 'branch_id',
@@ -182,6 +236,12 @@ const resources = {
     {
       key: 'branch-role-permissions',
       title: 'Branch Role Permissions',
+      permissions: {
+        read: 'view-branch-role-permission',
+        create: 'create-branch-role-permission',
+        update: 'update-branch-role-permission',
+        delete: 'delete-branch-role-permission'
+      },
       fields: [
         {
           key: 'branch_role_id',

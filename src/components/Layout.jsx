@@ -1,11 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
-export default function Layout() {
+export default function Layout({ onLogout, permissions }) {
   return (
     <div className="min-h-screen text-[var(--ink)]">
       <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col gap-6 px-4 py-6 lg:flex-row lg:gap-10 lg:px-8">
-        <Sidebar />
+        <Sidebar permissions={permissions} />
         <main className="flex-1">
           <div className="surface-panel rise-fade mb-6 rounded-3xl px-6 py-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -27,6 +27,13 @@ export default function Layout() {
                 <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1">
                   Live Data
                 </span>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-ink)] hover:bg-[var(--surface-soft)]"
+                >
+                  Log Out
+                </button>
               </div>
             </div>
           </div>
