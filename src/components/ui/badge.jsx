@@ -5,7 +5,7 @@ const Badge = React.forwardRef(({ className, ...props }, ref) => (
   <span
     ref={ref}
     className={cn(
-      'inline-flex items-center rounded-full bg-[var(--surface-soft)] px-2.5 py-0.5 text-xs font-semibold text-[var(--muted-ink)]',
+      'inline-flex items-center rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-ink)]',
       className
     )}
     {...props}

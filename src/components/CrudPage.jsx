@@ -41,6 +41,15 @@ function formatValue(value) {
   return String(value);
 }
 
+function getInitials(value) {
+  if (!value) {
+    return 'NA';
+  }
+  const words = String(value).trim().split(/\s+/);
+  const initials = words.slice(0, 2).map((word) => word[0]).join('');
+  return initials.toUpperCase();
+}
+
 export default function CrudPage({ resource, permissions = [] }) {
   const canRead = resource.permissions?.read
     ? permissions.includes(resource.permissions.read)
@@ -306,24 +315,24 @@ export default function CrudPage({ resource, permissions = [] }) {
 
   return (
     <div className="space-y-6">
-      <div className="surface-panel rise-fade rounded-3xl px-6 py-5">
+      <div className="surface-panel rise-fade rounded-[32px] px-6 py-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted-ink)]">
-              {resource.title}
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.38em] text-[var(--muted-ink)]">
+              Merchant Ledger
             </p>
             <h2 className="font-display text-3xl leading-tight">{resource.title}</h2>
             <p className="mt-2 text-sm text-[var(--muted-ink)]">
-              Manage {resource.title.toLowerCase()} records and keep the system aligned.
+              Curate {resource.title.toLowerCase()} and keep the storefront experience consistent.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm">
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted-ink)]">Total</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Total</p>
               <p className="text-lg font-semibold">{stats.total}</p>
             </div>
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm">
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted-ink)]">Highest ID</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Highest ID</p>
               <p className="text-lg font-semibold">{stats.maxId || '-'}</p>
             </div>
             {resource.permissions?.create ? (
@@ -366,10 +375,11 @@ export default function CrudPage({ resource, permissions = [] }) {
         )}
       </div>
 
-      <div className="soft-panel overflow-hidden rounded-3xl">
+      <div className="soft-panel overflow-hidden rounded-[32px]">
         <Table className="min-w-[720px]">
           <TableHeader className="bg-[var(--surface)]">
             <TableRow>
+              <TableHead>Profile</TableHead>
               {tableHeaders.map((header) => (
                 <TableHead key={header}>{header}</TableHead>
               ))}
@@ -379,59 +389,84 @@ export default function CrudPage({ resource, permissions = [] }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={headers.length + 1}>Loading...</TableCell>
+                <TableCell colSpan={headers.length + 2}>Loading...</TableCell>
               </TableRow>
             ) : filteredRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={headers.length + 1}>No data</TableCell>
+                <TableCell colSpan={headers.length + 2}>No data</TableCell>
               </TableRow>
             ) : (
-              filteredRows.map((row) => (
-                <TableRow key={row.id}>
-                  {tableHeaders.map((header) => (
-                    <TableCell key={`${row.id}-${header}`}>
-                      {header === 'permission_count' ? (
-                        <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                          {permissionCount(row.id)}
-                        </Badge>
-                      ) : header === 'status' ? (
-                        <Badge
-                          className={
-                            String(row[header]).toLowerCase() === 'active'
-                              ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                              : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-ink)]'
-                          }
-                        >
-                          {formatValue(row[header])}
-                        </Badge>
-                      ) : (
-                        formatValue(row[header])
-                      )}
+              filteredRows.map((row) => {
+                const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                const statusClass =
+                  statusValue === 'active'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : statusValue === 'pending'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : statusValue === 'suspended'
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+                const primaryField = fields.find((field) => field.key === 'name')?.key
+                  || fields.find((field) => field.key === 'email')?.key
+                  || fields[0]?.key;
+                const avatarText = primaryField ? formatValue(row[primaryField]) : `Record ${row.id}`;
+
+                return (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
+                          {getInitials(avatarText)}
+                        </div>
+                        <div>
+                          <div className="font-medium text-[var(--ink)]">
+                            {avatarText}
+                          </div>
+                          <div className="text-xs text-[var(--muted-ink)]">
+                            ID #{row.id}
+                          </div>
+                        </div>
+                      </div>
                     </TableCell>
-                  ))}
-                  <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      {roleConfig && (
-                        <Button size="sm" variant="outline" onClick={() => openInfo(row)}>
-                          Info
-                        </Button>
-                      )}
-                      {(!resource.permissions?.update ||
-                        permissions.includes(resource.permissions.update)) && (
-                        <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                          Edit
-                        </Button>
-                      )}
-                      {(!resource.permissions?.delete ||
-                        permissions.includes(resource.permissions.delete)) && (
-                        <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
-                          Delete
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                    {tableHeaders.map((header) => (
+                      <TableCell key={`${row.id}-${header}`}>
+                        {header === 'permission_count' ? (
+                          <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                            {permissionCount(row.id)}
+                          </Badge>
+                        ) : header === 'status' ? (
+                          <Badge className={`border ${statusClass}`}>
+                            {formatValue(row[header])}
+                          </Badge>
+                        ) : (
+                          formatValue(row[header])
+                        )}
+                      </TableCell>
+                    ))}
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        {roleConfig && (
+                          <Button size="sm" variant="outline" onClick={() => openInfo(row)}>
+                            Info
+                          </Button>
+                        )}
+                        {(!resource.permissions?.update ||
+                          permissions.includes(resource.permissions.update)) && (
+                          <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
+                            Edit
+                          </Button>
+                        )}
+                        {(!resource.permissions?.delete ||
+                          permissions.includes(resource.permissions.delete)) && (
+                          <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -518,14 +553,14 @@ export default function CrudPage({ resource, permissions = [] }) {
             {infoRole && (
               <div className="grid gap-4 text-sm">
                 <div className="grid gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted-ink)]">Role</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Role</p>
                   <p className="text-lg font-semibold">{infoRole.name || `#${infoRole.id}`}</p>
                   <div className="text-xs text-[var(--muted-ink)]">
                     {infoRole.description || 'No description'}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted-ink)]">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">
                     Permissions ({infoPermissions.length})
                   </p>
                   {infoPermissions.length === 0 ? (

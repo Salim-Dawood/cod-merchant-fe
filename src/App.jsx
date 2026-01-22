@@ -20,6 +20,7 @@ const routes = [
 export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [authed, setAuthed] = useState(false);
+  const [authType, setAuthType] = useState(null);
   const [permissions, setPermissions] = useState([]);
 
   useEffect(() => {
@@ -30,46 +31,76 @@ export default function App() {
       .then((profile) => {
         if (isMounted) {
           setAuthed(true);
+          setAuthType('platform');
           setPermissions(profile.permissions || []);
         }
       })
       .catch(() => {
-        if (isMounted) {
-          setAuthed(false);
-          setPermissions([]);
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setAuthReady(true);
-        }
+        auth
+          .refreshMerchant()
+          .then(() => auth.meMerchant())
+          .then(() => {
+            if (isMounted) {
+              setAuthed(true);
+              setAuthType('merchant');
+              setPermissions([]);
+            }
+          })
+          .catch(() => {
+            if (isMounted) {
+              setAuthed(false);
+              setAuthType(null);
+              setPermissions([]);
+            }
+          })
+          .finally(() => {
+            if (isMounted) {
+              setAuthReady(true);
+            }
+          });
       });
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const handleLogin = async () => {
+  const handleLogin = async (type) => {
+    if (type === 'merchant') {
+      await auth.meMerchant();
+      setAuthed(true);
+      setAuthType('merchant');
+      setPermissions([]);
+      return;
+    }
     const profile = await auth.me();
     setAuthed(true);
+    setAuthType('platform');
     setPermissions(profile.permissions || []);
   };
 
   const handleLogout = async () => {
     try {
-      await auth.logout();
+      if (authType === 'merchant') {
+        await auth.logoutMerchant();
+      } else {
+        await auth.logout();
+      }
     } finally {
       setAuthed(false);
+      setAuthType(null);
       setPermissions([]);
     }
   };
 
   const allowedRoutes = useMemo(() => {
+    if (authType === 'merchant') {
+      return routes.filter((route) => route.path.startsWith('/merchant/'));
+    }
     return routes.filter((route) => {
       const perm = route.resource.permissions?.read;
       return !perm || permissions.includes(perm);
     });
-  }, [permissions]);
+  }, [permissions, authType]);
 
   const defaultPath = allowedRoutes[0]?.path || routes[0]?.path || '/login';
 
@@ -81,7 +112,7 @@ export default function App() {
         element={
           authReady ? (
             authed ? (
-              <Layout onLogout={handleLogout} permissions={permissions} />
+              <Layout onLogout={handleLogout} permissions={permissions} authType={authType} />
             ) : (
               <Navigate to="/login" replace />
             )

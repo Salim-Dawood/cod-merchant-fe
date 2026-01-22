@@ -5,14 +5,14 @@ import { cva } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-semibold tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-[var(--accent)] text-white shadow-md shadow-black/10 hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]',
-        secondary: 'bg-[var(--surface)] text-[var(--ink)] shadow-sm hover:bg-[var(--surface-soft)]',
-        outline: 'border border-[var(--border)] bg-transparent text-[var(--ink)] hover:bg-[var(--surface)]',
-        destructive: 'bg-red-600 text-white shadow-md shadow-red-600/20 hover:bg-red-500'
+        default: 'bg-[var(--accent)] text-white shadow-[var(--glow)] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]',
+        secondary: 'bg-[var(--surface)] text-[var(--ink)] shadow-sm hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]',
+        outline: 'border border-[var(--border)] bg-transparent text-[var(--ink)] hover:-translate-y-0.5 hover:bg-[var(--surface)]',
+        destructive: 'bg-red-600 text-white shadow-md shadow-red-600/20 hover:-translate-y-0.5 hover:bg-red-500'
       },
       size: {
         default: 'h-10 px-5',

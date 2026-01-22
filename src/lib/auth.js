@@ -29,16 +29,38 @@ export const auth = {
       method: 'POST',
       body: JSON.stringify({ email, password })
     }),
+  loginMerchant: (email, password) =>
+    request('/merchant/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    }),
+  register: (payload) =>
+    request('/merchant/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
   refresh: () =>
     request('/platform/auth/refresh', {
+      method: 'POST'
+    }),
+  refreshMerchant: () =>
+    request('/merchant/auth/refresh', {
       method: 'POST'
     }),
   me: () =>
     request('/platform/auth/me', {
       method: 'GET'
     }),
+  meMerchant: () =>
+    request('/merchant/auth/me', {
+      method: 'GET'
+    }),
   logout: () =>
     request('/platform/auth/logout', {
+      method: 'POST'
+    }),
+  logoutMerchant: () =>
+    request('/merchant/auth/logout', {
       method: 'POST'
     })
 };
