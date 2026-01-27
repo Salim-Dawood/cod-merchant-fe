@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,19 +6,19 @@
 
 :root {
   color-scheme: light;
-  --ink: #1a1714;
-  --muted-ink: #5f5b56;
-  --accent: #0c6b5c;
-  --accent-strong: #084f45;
-  --accent-soft: #d6f1ea;
-  --sun: #e07d29;
-  --sun-soft: #f6e3d0;
+  --ink: #111418;
+  --muted-ink: #5f6368;
+  --accent: #1f7a6b;
+  --accent-strong: #135a50;
+  --accent-soft: #e6f2ef;
+  --sun: #1f7a6b;
+  --sun-soft: #eef7f5;
   --surface: #ffffff;
-  --surface-soft: #f6f1ea;
-  --border: #e7ddd0;
-  --shadow: 0 28px 60px -46px rgba(26, 23, 20, 0.6);
-  --shadow-soft: 0 18px 40px -34px rgba(26, 23, 20, 0.45);
-  --glow: 0 24px 60px -40px rgba(12, 107, 92, 0.55);
+  --surface-soft: #f6f7f8;
+  --border: #e5e7eb;
+  --shadow: 0 24px 60px -40px rgba(12, 18, 24, 0.5);
+  --shadow-soft: 0 18px 40px -34px rgba(12, 18, 24, 0.35);
+  --glow: 0 24px 48px -36px rgba(31, 122, 107, 0.35);
 }
 
 * {
@@ -26,19 +26,13 @@
 }
 
 body {
-  font-family: 'Work Sans', 'Segoe UI', sans-serif;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
   color: var(--ink);
-  background-color: #f4efe6;
-  background-image:
-    radial-gradient(circle at 18% 16%, rgba(12, 107, 92, 0.18), transparent 50%),
-    radial-gradient(circle at 84% 12%, rgba(224, 125, 41, 0.22), transparent 44%),
-    radial-gradient(circle at 18% 86%, rgba(70, 55, 40, 0.12), transparent 52%),
-    linear-gradient(122deg, #fbf7f1 0%, #f4eee5 46%, #efe7db 100%),
-    linear-gradient(rgba(26, 23, 20, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 23, 20, 0.05) 1px, transparent 1px);
-  background-size: auto, auto, auto, auto, 140px 140px, 140px 140px;
-  background-position: 0 0, 0 0, 0 0, 0 0, -30px -30px, -30px -30px;
   min-height: 100vh;
+  background-color: #ececec;
+  background-image:
+    radial-gradient(circle at top left, #f7f7f7 0%, transparent 45%),
+    radial-gradient(circle at top right, #f3f3f3 0%, transparent 50%);
 }
 
 #root {
@@ -46,7 +40,17 @@ body {
 }
 
 .font-display {
-  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .font-mono {
@@ -54,22 +58,26 @@ body {
 }
 
 .surface-panel {
-  background-color: rgba(255, 255, 255, 0.94);
+  background-color: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.soft-panel {
+  background-color: #ffffff;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
 
-.soft-panel {
-  background-color: rgba(247, 244, 239, 0.92);
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.95);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(10px);
 }
 
-.glass-panel {
-  background-color: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(231, 221, 208, 0.7);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(18px);
+main {
+  background-image: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
 }
 
 .rise-fade {

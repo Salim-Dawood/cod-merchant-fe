@@ -15,7 +15,8 @@ const resources = {
           label: 'Platform Role',
           type: 'select',
           ref: 'platform-roles',
-          refLabel: 'name'
+          refLabel: 'name',
+          required: true
         },
         { key: 'first_name', label: 'First Name', type: 'text', required: true },
         { key: 'last_name', label: 'Last Name', type: 'text', required: true },

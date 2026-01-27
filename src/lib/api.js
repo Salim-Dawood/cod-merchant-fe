@@ -13,7 +13,22 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Request failed: ${response.status}`);
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+    }
+    const message =
+      (data && (data.message || data.error || data.title)) ||
+      text ||
+      `Request failed: ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.data = data || text || null;
+    throw error;
   }
 
   if (response.status === 204) {

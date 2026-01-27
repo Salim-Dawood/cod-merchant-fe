@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -50,12 +50,80 @@ function getInitials(value) {
   return initials.toUpperCase();
 }
 
+function normalizeServerValidation(data, fields) {
+  const fieldKeys = new Set(fields.map((field) => field.key));
+  const errors = {};
+  let message = '';
+
+  const addError = (key, value) => {
+    if (!key) {
+      if (!message && value) {
+        message = value;
+      }
+      return;
+    }
+    if (fieldKeys.has(key)) {
+      errors[key] = value || 'Invalid value.';
+    } else if (!message && value) {
+      message = value;
+    }
+  };
+
+  const readObjectErrors = (payload) => {
+    if (!payload || typeof payload !== 'object') {
+      return;
+    }
+    if (typeof payload.message === 'string' && !message) {
+      message = payload.message;
+    }
+    if (typeof payload.error === 'string' && !message) {
+      message = payload.error;
+    }
+    if (typeof payload.title === 'string' && !message) {
+      message = payload.title;
+    }
+    if (Array.isArray(payload.errors)) {
+      payload.errors.forEach((entry) => {
+        if (!entry) {
+          return;
+        }
+        if (typeof entry === 'string') {
+          addError('', entry);
+          return;
+        }
+        const key = entry.field || entry.path || entry.param || entry.key;
+        const value = entry.message || entry.msg || entry.error || entry.description;
+        addError(key, value);
+      });
+    } else if (payload.errors && typeof payload.errors === 'object') {
+      Object.entries(payload.errors).forEach(([key, value]) => {
+        const messageValue = Array.isArray(value) ? value[0] : value;
+        addError(key, typeof messageValue === 'string' ? messageValue : 'Invalid value.');
+      });
+    }
+    if (payload.details && typeof payload.details === 'object') {
+      readObjectErrors(payload.details);
+    }
+    if (payload.data && typeof payload.data === 'object') {
+      readObjectErrors(payload.data);
+    }
+  };
+
+  if (typeof data === 'string') {
+    message = data;
+  } else {
+    readObjectErrors(data);
+  }
+
+  return { errors, message };
+}
+
 export default function CrudPage({ resource, permissions = [] }) {
   const canRead = resource.permissions?.read
     ? permissions.includes(resource.permissions.read)
     : true;
   const [rows, setRows] = useState([]);
-  const [error, setError] = useState('');
+  const [, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
@@ -73,7 +141,7 @@ export default function CrudPage({ resource, permissions = [] }) {
   const fields = useMemo(() => resource.fields, [resource.fields]);
   const roleConfig = roleInfoConfig[resource.key];
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -84,11 +152,11 @@ export default function CrudPage({ resource, permissions = [] }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [resource.key]);
 
   useEffect(() => {
     load();
-  }, [resource.key]);
+  }, [load]);
 
   useEffect(() => {
     const loadRefOptions = async () => {
@@ -120,7 +188,7 @@ export default function CrudPage({ resource, permissions = [] }) {
           })
         );
         setRefOptions(Object.fromEntries(results));
-      } catch (err) {
+      } catch {
         setRefOptions({});
       }
     };
@@ -160,7 +228,7 @@ export default function CrudPage({ resource, permissions = [] }) {
           map[roleId].push(label);
         });
         setPermissionMap(map);
-      } catch (err) {
+      } catch {
         setPermissionMap({});
       }
     };
@@ -205,12 +273,19 @@ export default function CrudPage({ resource, permissions = [] }) {
 
   const handleChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    const field = fields.find((item) => item.key === key);
     setFieldErrors((prev) => {
-      if (!prev[key]) {
-        return prev;
-      }
       const next = { ...prev };
-      delete next[key];
+      if (field?.required && field.type !== 'boolean') {
+        const isEmpty = value === '' || value === null || value === undefined;
+        if (isEmpty) {
+          next[key] = `${field.label} is required.`;
+        } else {
+          delete next[key];
+        }
+      } else {
+        delete next[key];
+      }
       return next;
     });
   };
@@ -266,6 +341,16 @@ export default function CrudPage({ resource, permissions = [] }) {
       setOpen(false);
       await load();
     } catch (err) {
+      if (err?.status === 400) {
+        const { errors, message } = normalizeServerValidation(err.data, fields);
+        if (Object.keys(errors).length > 0) {
+          setFieldErrors(errors);
+        }
+        if (message) {
+          setError(message);
+          return;
+        }
+      }
       setError(err.message || 'Failed to save');
     }
   };
@@ -293,8 +378,11 @@ export default function CrudPage({ resource, permissions = [] }) {
     setDeleteTarget(null);
   };
 
-  const headers = ['id', ...fields.map((field) => field.key)];
-  const tableHeaders = roleConfig ? [...headers, 'permission_count'] : headers;
+  const headers = useMemo(() => ['id', ...fields.map((field) => field.key)], [fields]);
+  const tableHeaders = useMemo(
+    () => (roleConfig ? [...headers, 'permission_count'] : headers),
+    [headers, roleConfig]
+  );
   const statusKey = fields.find((field) => field.key === 'status')?.key;
   const stats = useMemo(() => {
     const total = rows.length;
@@ -400,22 +488,19 @@ export default function CrudPage({ resource, permissions = [] }) {
             {loading ? 'Loading' : `${filteredRows.length} rows`}
           </Badge>
         </div>
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
-            {error}
-          </div>
-        )}
       </div>
 
       <div className="soft-panel overflow-hidden rounded-[32px]">
         <Table className="min-w-[720px]">
-          <TableHeader className="bg-[var(--surface)]">
-            <TableRow>
-              <TableHead>Profile</TableHead>
+          <TableHeader className="bg-black text-white">
+            <TableRow className="bg-black hover:bg-black">
+              <TableHead className="text-white">Profile</TableHead>
               {tableHeaders.map((header) => (
-                <TableHead key={header}>{header}</TableHead>
+                <TableHead key={header} className="text-white">
+                  {header}
+                </TableHead>
               ))}
-              <TableHead>Actions</TableHead>
+              <TableHead className="text-white">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -566,7 +651,6 @@ export default function CrudPage({ resource, permissions = [] }) {
                     type={field.type}
                     value={form[field.key] ?? ''}
                     onChange={(event) => handleChange(field.key, event.target.value)}
-                    required={field.required}
                     className={hasError ? 'border-red-300 focus-visible:ring-red-200' : ''}
                   />
                   {hasError && (
