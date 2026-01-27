@@ -142,6 +142,8 @@ main {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--muted-ink);
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 @media (min-width: 640px) {
@@ -178,9 +180,10 @@ body {
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .responsive-table tbody td {
     align-items: flex-start;
+    flex-direction: column;
   }
 }
 
