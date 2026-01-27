@@ -541,7 +541,7 @@ export default function CrudPage({ resource, permissions = [] }) {
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
                           {getInitials(avatarText)}
                         </div>
-                        <div>
+                        <div className="cell-clamp">
                           <div className="font-medium text-[var(--ink)]">
                             {avatarText}
                           </div>
@@ -562,7 +562,7 @@ export default function CrudPage({ resource, permissions = [] }) {
                             {formatValue(row[header])}
                           </Badge>
                         ) : (
-                          formatValue(row[header])
+                          <span className="cell-clamp">{formatValue(row[header])}</span>
                         )}
                       </TableCell>
                     ))}
