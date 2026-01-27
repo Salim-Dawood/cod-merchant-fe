@@ -76,11 +76,11 @@ export default function LoginPage({ onSuccess }) {
         setMode('merchant');
       } else if (mode === 'merchant') {
         await auth.loginMerchant(email, password);
-        onSuccess?.('merchant');
+        await onSuccess?.('merchant');
         navigate('/merchant/merchants', { replace: true });
       } else {
         await auth.login(email, password);
-        onSuccess?.('platform');
+        await onSuccess?.('platform');
         navigate('/platform/platform-admins', { replace: true });
       }
     } catch (err) {
