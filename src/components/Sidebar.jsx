@@ -57,8 +57,8 @@ export default function Sidebar({ permissions = [], authType }) {
   };
 
   return (
-    <aside className="rise-fade flex w-full flex-col gap-4 sm:flex-row lg:h-[calc(100vh-1rem)] lg:w-auto lg:flex-none lg:items-start">
-      <div className="glass-panel flex h-auto w-full items-center gap-3 rounded-[26px] px-4 py-3 sm:w-16 sm:flex-col sm:items-center sm:py-5 lg:h-[calc(100vh-1rem)] lg:w-20 lg:gap-4 lg:py-6">
+    <aside className="rise-fade flex w-auto flex-row gap-4 lg:h-[calc(100vh-1rem)] lg:flex-none lg:items-start">
+      <div className="glass-panel flex h-auto w-16 flex-col items-center gap-3 rounded-[26px] py-5 lg:h-[calc(100vh-1rem)] lg:w-20 lg:gap-4 lg:py-6">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-lg">
           CM
         </div>
@@ -70,7 +70,7 @@ export default function Sidebar({ permissions = [], authType }) {
         >
           <span className="text-base font-semibold">{isCollapsed ? '>' : '<'}</span>
         </button>
-        <div className="no-scrollbar flex flex-1 flex-row gap-2 overflow-x-auto sm:flex-col sm:overflow-visible">
+        <div className="flex flex-1 flex-col gap-2">
           {railItems.map((item) => (
             <button
               key={item.key}

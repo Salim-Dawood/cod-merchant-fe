@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 export default function Layout({ onLogout, permissions, authType }) {
   return (
     <div className="min-h-screen text-[var(--ink)]">
-      <div className="mx-auto flex min-h-screen max-w-[1560px] flex-col gap-4 px-2 py-2 sm:px-3 lg:flex-row lg:gap-5 lg:px-4">
+      <div className="mx-auto flex min-h-screen max-w-[1560px] flex-row gap-5 px-4 py-2">
         <Sidebar permissions={permissions} authType={authType} />
         <main className="flex-1 space-y-6 rounded-[28px] bg-[var(--surface)] p-4 sm:p-5 lg:p-6 shadow-sm">
           <div className="surface-panel rise-fade rounded-[24px] px-5 py-4 sm:px-6 sm:py-5">

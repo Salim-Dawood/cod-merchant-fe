@@ -39,6 +39,7 @@ body {
 
 #root {
   min-height: 100vh;
+  min-width: 1200px;
 }
 
 .font-display {
@@ -181,9 +182,27 @@ body {
 }
 
 @media (max-width: 900px) {
+  body {
+    overflow-x: auto;
+  }
+
+  .responsive-table thead {
+    display: table-header-group;
+  }
+
+  .responsive-table tbody tr {
+    display: table-row;
+    padding: 0;
+  }
+
   .responsive-table tbody td {
-    align-items: flex-start;
-    flex-direction: column;
+    display: table-cell;
+    padding: 1rem;
+    font-size: 0.875rem;
+  }
+
+  .responsive-table tbody td::before {
+    content: none;
   }
 }
 
