@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
@@ -26,28 +26,10 @@ const sections = [
 ];
 
 export default function Sidebar({ permissions = [], authType }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState({
     Platform: true,
     Merchant: true
   });
-
-  const railItems = useMemo(
-    () => [
-      { key: 'home', label: 'Home' },
-      { key: 'search', label: 'Search' },
-      { key: 'inbox', label: 'Inbox' },
-      { key: 'bell', label: 'Notifications' },
-      { key: 'grid', label: 'Menu', active: true },
-      { key: 'chart', label: 'Analytics' },
-      { key: 'file', label: 'Reports' },
-      { key: 'stack', label: 'Orders' },
-      { key: 'receipt', label: 'Invoices' },
-      { key: 'archive', label: 'Manufactures' },
-      { key: 'trash', label: 'Trash' }
-    ],
-    []
-  );
 
   const toggleSection = (title) => {
     setOpenSections((prev) => ({
@@ -60,45 +42,11 @@ export default function Sidebar({ permissions = [], authType }) {
     <aside className="rise-fade flex-none">
       <div
         className={cn(
-          'glass-panel flex flex-row gap-4 rounded-[32px] px-4 py-4 sm:gap-4 sm:px-5 sm:py-5 lg:h-[calc(100vh-1rem)] lg:gap-5 lg:px-5 lg:py-6',
-          isCollapsed ? 'w-[96px] px-4' : 'w-[280px] sm:w-[360px] lg:w-[420px]'
+          'glass-panel flex flex-col gap-6 rounded-[32px] px-4 py-4 sm:gap-6 sm:px-5 sm:py-5 lg:h-[calc(100vh-1rem)] lg:gap-6 lg:px-5 lg:py-6',
+          'w-[280px] sm:w-[360px] lg:w-[420px]'
         )}
       >
-        <div className="flex w-20 flex-col items-center justify-start gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-lg">
-            CM
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsCollapsed((prev) => !prev)}
-            aria-expanded={!isCollapsed}
-            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
-          >
-            <span className="text-base font-semibold">{isCollapsed ? '>' : '<'}</span>
-          </button>
-          <div className="no-scrollbar flex flex-1 flex-col gap-2 overflow-y-auto">
-            {railItems.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                aria-label={item.label}
-                className={cn(
-                  'flex h-11 w-11 items-center justify-center rounded-2xl border border-transparent text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:border-[var(--border)] hover:bg-[var(--surface)]',
-                  item.active && 'border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--ink)] shadow-sm'
-                )}
-              >
-                <SidebarIcon name={item.key} />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            'flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto transition-all duration-300 ease-out',
-            isCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'opacity-100'
-          )}
-        >
+        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-lg">
