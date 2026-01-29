@@ -4,9 +4,9 @@ import Sidebar from './Sidebar';
 export default function Layout({ onLogout, permissions, authType }) {
   return (
     <div className="min-h-screen text-[var(--ink)]">
-      <div className="mx-auto flex min-h-screen max-w-[1560px] flex-col gap-4 px-2 py-2 sm:flex-row sm:gap-4 sm:px-3 lg:gap-5 lg:px-4">
+      <div className="flex min-h-screen w-full flex-col gap-4 px-2 py-2 sm:flex-row sm:gap-4 sm:px-3 lg:gap-5 lg:px-4">
         <Sidebar permissions={permissions} authType={authType} />
-        <main className="flex-1 space-y-6 rounded-[28px] bg-[var(--surface)] p-4 sm:p-5 lg:p-6 shadow-sm">
+        <main className="flex-1 min-w-0 space-y-6 rounded-[28px] bg-[var(--surface)] p-4 sm:p-5 lg:p-6 shadow-sm">
           <div className="surface-panel rise-fade rounded-[24px] px-5 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div>
