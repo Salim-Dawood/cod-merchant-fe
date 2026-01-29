@@ -57,9 +57,14 @@ export default function Sidebar({ permissions = [], authType }) {
   };
 
   return (
-    <aside className="rise-fade w-full lg:w-auto lg:flex-none">
-      <div className="glass-panel flex w-full flex-col gap-4 rounded-[32px] px-4 py-4 sm:flex-row sm:gap-4 sm:px-5 sm:py-5 lg:h-[calc(100vh-1rem)] lg:w-[420px] lg:flex-row lg:gap-5 lg:px-5 lg:py-6">
-        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-center sm:justify-start">
+    <aside className="rise-fade w-full flex-none">
+      <div
+        className={cn(
+          'glass-panel flex w-full flex-row gap-4 rounded-[32px] px-4 py-4 sm:gap-4 sm:px-5 sm:py-5 lg:h-[calc(100vh-1rem)] lg:gap-5 lg:px-5 lg:py-6',
+          isCollapsed ? 'w-[104px] px-4' : 'w-full lg:w-[420px]'
+        )}
+      >
+        <div className="flex w-20 flex-col items-center justify-start gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-lg">
             CM
           </div>
@@ -71,7 +76,7 @@ export default function Sidebar({ permissions = [], authType }) {
           >
             <span className="text-base font-semibold">{isCollapsed ? '>' : '<'}</span>
           </button>
-          <div className="no-scrollbar flex flex-1 flex-row gap-2 overflow-x-auto sm:flex-col sm:overflow-visible">
+          <div className="no-scrollbar flex flex-1 flex-col gap-2 overflow-y-auto">
             {railItems.map((item) => (
               <button
                 key={item.key}
