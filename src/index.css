@@ -151,6 +151,10 @@ body {
 
 @media (max-width: 900px) {
   body {
-    overflow-x: hidden;
+    overflow-x: auto;
+  }
+
+  #root {
+    min-width: 1200px;
   }
 }
