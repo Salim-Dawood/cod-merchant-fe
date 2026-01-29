@@ -32,6 +32,14 @@ export default function Sidebar({ permissions = [], authType }) {
     Merchant: true
   });
 
+  const visibleSections = sections.filter((section) =>
+    authType === 'merchant' ? section.title === 'Merchant' : true
+  );
+
+  const visibleLinks = visibleSections.flatMap((section) =>
+    section.links.filter((link) => !link.permission || permissions.includes(link.permission))
+  );
+
   const toggleSection = (title) => {
     setOpenSections((prev) => ({
       ...prev,
@@ -61,65 +69,74 @@ export default function Sidebar({ permissions = [], authType }) {
           </button>
         </div>
 
-        <div
-          className={cn(
-            'flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto transition-all duration-300 ease-out',
-            isCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'opacity-100'
-          )}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-lg">
-                CM
-              </div>
-              <div>
-                <h1 className="font-display text-[26px] leading-tight tracking-[0.04em]">COD Merchant</h1>
-                <p className="font-mono text-[10px] uppercase tracking-[0.45em] text-[var(--muted-ink)]">
-                  Merchant Office
-                </p>
-              </div>
-            </div>
-            <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)] shadow-[0_0_12px_rgba(12,107,92,0.8)]" />
+        {isCollapsed ? (
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-2 overflow-y-auto pb-2">
+            {visibleLinks.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  cn(
+                    'flex h-11 w-11 items-center justify-center rounded-2xl border border-transparent text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:border-[var(--border)] hover:bg-[var(--surface)]',
+                    isActive && 'border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--ink)] shadow-sm'
+                  )
+                }
+                aria-label={link.label}
+              >
+                <SidebarIcon name={link.icon || 'dot'} />
+              </NavLink>
+            ))}
           </div>
+        ) : (
+          <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto transition-all duration-300 ease-out opacity-100">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-lg">
+                  CM
+                </div>
+                <div>
+                  <h1 className="font-display text-[26px] leading-tight tracking-[0.04em]">COD Merchant</h1>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.45em] text-[var(--muted-ink)]">
+                    Merchant Office
+                  </p>
+                </div>
+              </div>
+              <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)] shadow-[0_0_12px_rgba(12,107,92,0.8)]" />
+            </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
-          <p className="font-display text-[12px] font-semibold uppercase tracking-[0.5em] text-[var(--ink)]">
-            Storefront
-          </p>
-          <p className="mt-2 leading-relaxed text-[13px]">
-            Curate branches, manage teams, and keep merchant experiences on brand.
-          </p>
-        </div>
-
-          <div className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
-            <div>
-              <p className="font-display text-[12px] uppercase tracking-[0.5em]">Workspace</p>
-              <p className="mt-1 text-[13px] font-semibold text-[var(--ink)] tracking-[0.02em]">
-                Regional Ops
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
+              <p className="font-display text-[12px] font-semibold uppercase tracking-[0.5em] text-[var(--ink)]">
+                Storefront
+              </p>
+              <p className="mt-2 leading-relaxed text-[13px]">
+                Curate branches, manage teams, and keep merchant experiences on brand.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
-              <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2.5 py-1">
-                Q1 Cycle
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2.5 py-1">
-                Audit Ready
-              </span>
+
+            <div className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
+              <div>
+                <p className="font-display text-[12px] uppercase tracking-[0.5em]">Workspace</p>
+                <p className="mt-1 text-[13px] font-semibold text-[var(--ink)] tracking-[0.02em]">
+                  Regional Ops
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
+                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2.5 py-1">
+                  Q1 Cycle
+                </span>
+                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2.5 py-1">
+                  Audit Ready
+                </span>
+              </div>
             </div>
-          </div>
 
-          <nav className="space-y-6">
-            {sections
-              .filter((section) => (authType === 'merchant' ? section.title === 'Merchant' : true))
-              .map((section) => {
-                const visibleLinks = section.links.filter((link) => {
-                  if (!link.permission) {
-                    return true;
-                  }
-                  return permissions.includes(link.permission);
-                });
+            <nav className="space-y-6">
+              {visibleSections.map((section) => {
+                const sectionLinks = section.links.filter(
+                  (link) => !link.permission || permissions.includes(link.permission)
+                );
 
-                if (visibleLinks.length === 0) {
+                if (sectionLinks.length === 0) {
                   return null;
                 }
 
@@ -141,7 +158,7 @@ export default function Sidebar({ permissions = [], authType }) {
                     </button>
                     {openSections[section.title] && (
                       <div className="flex flex-col gap-2">
-                        {visibleLinks.map((link, index) => {
+                        {sectionLinks.map((link, index) => {
                           const delay = `${index * 70}ms`;
                           return (
                             <NavLink
@@ -168,47 +185,48 @@ export default function Sidebar({ permissions = [], authType }) {
                   </div>
                 );
               })}
-          </nav>
+            </nav>
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)]">
-                <SidebarIcon name="spark" />
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)]">
+                  <SidebarIcon name="spark" />
+                </div>
+                <div>
+                  <p className="font-display text-[12px] uppercase tracking-[0.5em] text-[var(--muted-ink)]">
+                    Current plan
+                  </p>
+                  <p className="mt-1 text-[13px] font-semibold text-[var(--ink)] tracking-[0.02em]">
+                    Pro trial
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-display text-[12px] uppercase tracking-[0.5em] text-[var(--muted-ink)]">
-                  Current plan
-                </p>
-                <p className="mt-1 text-[13px] font-semibold text-[var(--ink)] tracking-[0.02em]">
-                  Pro trial
-                </p>
+              <p className="mt-3 text-[13px] leading-relaxed text-[var(--muted-ink)]">
+                Upgrade to Pro to unlock analytics and priority support.
+              </p>
+              <button
+                type="button"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.38em] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
+              >
+                <SidebarIcon name="bolt" />
+                <span className="font-display text-[12px] tracking-[0.32em]">Upgrade to Pro</span>
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+              <div className="flex items-center gap-3 text-[13px]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--muted-ink)]">
+                  <SidebarIcon name="user" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[var(--ink)] tracking-[0.02em]">Brooklyn</p>
+                  <p className="text-[11px] text-[var(--muted-ink)] tracking-[0.2em] uppercase">Pro trial</p>
+                </div>
+                <span className="ml-auto text-[var(--muted-ink)]">v</span>
               </div>
             </div>
-            <p className="mt-3 text-[13px] leading-relaxed text-[var(--muted-ink)]">
-              Upgrade to Pro to unlock analytics and priority support.
-            </p>
-            <button
-              type="button"
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.38em] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
-            >
-              <SidebarIcon name="bolt" />
-              <span className="font-display text-[12px] tracking-[0.32em]">Upgrade to Pro</span>
-            </button>
           </div>
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <div className="flex items-center gap-3 text-[13px]">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--muted-ink)]">
-                <SidebarIcon name="user" />
-              </div>
-              <div>
-                <p className="font-semibold text-[var(--ink)] tracking-[0.02em]">Brooklyn</p>
-                <p className="text-[11px] text-[var(--muted-ink)] tracking-[0.2em] uppercase">Pro trial</p>
-              </div>
-              <span className="ml-auto text-[var(--muted-ink)]">v</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </aside>
   );
