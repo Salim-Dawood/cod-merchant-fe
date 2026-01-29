@@ -26,6 +26,7 @@ const sections = [
 ];
 
 export default function Sidebar({ permissions = [], authType }) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState({
     Platform: true,
     Merchant: true
@@ -42,11 +43,30 @@ export default function Sidebar({ permissions = [], authType }) {
     <aside className="rise-fade flex-none">
       <div
         className={cn(
-          'glass-panel flex flex-col gap-6 rounded-[32px] px-4 py-4 sm:gap-6 sm:px-5 sm:py-5 lg:h-[calc(100vh-1rem)] lg:gap-6 lg:px-5 lg:py-6',
-          'w-[280px] sm:w-[360px] lg:w-[420px]'
+          'glass-panel flex flex-row gap-4 rounded-[32px] px-4 py-4 sm:gap-4 sm:px-5 sm:py-5 lg:h-[calc(100vh-1rem)] lg:gap-5 lg:px-5 lg:py-6',
+          isCollapsed ? 'w-[96px] px-4' : 'w-[280px] sm:w-[360px] lg:w-[420px]'
         )}
       >
-        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto">
+        <div className="flex w-20 flex-col items-center justify-start gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-lg">
+            CM
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            aria-expanded={!isCollapsed}
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
+          >
+            <span className="text-base font-semibold">{isCollapsed ? '>' : '<'}</span>
+          </button>
+        </div>
+
+        <div
+          className={cn(
+            'flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto transition-all duration-300 ease-out',
+            isCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'opacity-100'
+          )}
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-lg">
