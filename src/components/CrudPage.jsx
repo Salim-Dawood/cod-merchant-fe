@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -492,7 +492,7 @@ export default function CrudPage({ resource, permissions = [] }) {
       </div>
 
       <div className="soft-panel rounded-[32px]">
-        <div className="max-h-[70vh] overflow-auto md:max-h-[calc(100vh-320px)]">
+        <div className="overflow-visible">
           <Table className="responsive-table w-full">
           <TableHeader className="bg-black text-white">
             <TableRow className="bg-black hover:bg-black">
@@ -775,3 +775,4 @@ export default function CrudPage({ resource, permissions = [] }) {
     </div>
   );
 }
+

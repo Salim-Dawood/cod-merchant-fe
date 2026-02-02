@@ -20,7 +20,11 @@ const sections = [
       { label: 'Users', to: '/merchant/users', permission: 'view-user', icon: 'user' },
       { label: 'Permissions', to: '/merchant/permissions', permission: 'view-permission', icon: 'key' },
       { label: 'Branch Roles', to: '/merchant/branch-roles', permission: 'view-branch-role', icon: 'id' },
-      { label: 'Branch Role Permissions', to: '/merchant/branch-role-permissions', permission: 'view-branch-role-permission', icon: 'list' }
+      { label: 'Branch Role Permissions', to: '/merchant/branch-role-permissions', permission: 'view-branch-role-permission', icon: 'list' },
+      { label: 'Products', to: '/merchant/products', permission: 'view-product', icon: 'stack' },
+      { label: 'Categories', to: '/merchant/categories', permission: 'view-category', icon: 'grid' },
+      { label: 'Product Images', to: '/merchant/product-images', permission: 'view-product-image', icon: 'file' },
+      { label: 'Product Categories', to: '/merchant/product-categories', permission: 'view-product-category', icon: 'list' }
     ]
   }
 ];
@@ -39,7 +43,6 @@ export default function Sidebar({ permissions = [], authType }) {
   const visibleLinks = visibleSections.flatMap((section) =>
     section.links.filter((link) => !link.permission || permissions.includes(link.permission))
   );
-
   const toggleSection = (title) => {
     setOpenSections((prev) => ({
       ...prev,

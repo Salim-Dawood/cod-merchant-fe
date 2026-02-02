@@ -259,6 +259,104 @@ const resources = {
           required: true
         }
       ]
+    },
+    {
+      key: 'products',
+      title: 'Products',
+      permissions: {
+        read: 'view-product',
+        create: 'create-product',
+        update: 'update-product',
+        delete: 'delete-product'
+      },
+      fields: [
+        {
+          key: 'branch_id',
+          label: 'Branch',
+          type: 'select',
+          ref: 'branches',
+          refLabel: 'name',
+          required: true
+        },
+        { key: 'name', label: 'Name', type: 'text', required: true },
+        { key: 'slug', label: 'Slug', type: 'text', required: true },
+        { key: 'description', label: 'Description', type: 'text' },
+        { key: 'moq', label: 'MOQ', type: 'number' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['draft', 'active', 'hidden', 'out_of_stock', 'archived']
+        },
+        { key: 'is_active', label: 'Active', type: 'boolean' }
+      ]
+    },
+    {
+      key: 'categories',
+      title: 'Categories',
+      permissions: {
+        read: 'view-category',
+        create: 'create-category',
+        update: 'update-category',
+        delete: 'delete-category'
+      },
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', required: true },
+        { key: 'slug', label: 'Slug', type: 'text', required: true },
+        { key: 'is_active', label: 'Active', type: 'boolean' }
+      ]
+    },
+    {
+      key: 'product-images',
+      title: 'Product Images',
+      permissions: {
+        read: 'view-product-image',
+        create: 'create-product-image',
+        update: 'update-product-image',
+        delete: 'delete-product-image'
+      },
+      fields: [
+        {
+          key: 'product_id',
+          label: 'Product',
+          type: 'select',
+          ref: 'products',
+          refLabel: 'name',
+          required: true
+        },
+        { key: 'url', label: 'Image URL', type: 'text', required: true },
+        { key: 'sort_order', label: 'Sort Order', type: 'number' },
+        { key: 'is_active', label: 'Active', type: 'boolean' }
+      ]
+    },
+    {
+      key: 'product-categories',
+      title: 'Product Categories',
+      permissions: {
+        read: 'view-product-category',
+        create: 'create-product-category',
+        update: 'update-product-category',
+        delete: 'delete-product-category'
+      },
+      fields: [
+        {
+          key: 'product_id',
+          label: 'Product',
+          type: 'select',
+          ref: 'products',
+          refLabel: 'name',
+          required: true
+        },
+        {
+          key: 'category_id',
+          label: 'Category',
+          type: 'select',
+          ref: 'categories',
+          refLabel: 'name',
+          required: true
+        },
+        { key: 'is_active', label: 'Active', type: 'boolean' }
+      ]
     }
   ]
 };
