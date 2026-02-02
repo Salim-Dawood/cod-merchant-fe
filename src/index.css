@@ -41,7 +41,8 @@ body {
     radial-gradient(circle at top right, #f3f3f3 0%, transparent 50%);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #root {
@@ -143,9 +144,6 @@ main {
   content: none;
 }
 
-body {
-  overflow-x: hidden;
-}
 
 .no-scrollbar {
   scrollbar-width: none;
