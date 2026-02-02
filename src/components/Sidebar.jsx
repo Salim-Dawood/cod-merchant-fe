@@ -36,6 +36,11 @@ export default function Sidebar({ permissions = [], authType, profile }) {
     Merchant: true
   });
 
+  const profileName = profile
+    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
+    : 'Profile';
+  const profileAvatar = profile?.avatar_url ? String(profile.avatar_url) : '';
+
   const visibleSections = sections.filter((section) =>
     authType === 'merchant' ? section.title === 'Merchant' : true
   );
@@ -465,7 +470,3 @@ function SidebarIcon({ name }) {
       return null;
   }
 }
-  const profileName = profile
-    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
-    : 'Profile';
-  const profileAvatar = profile?.avatar_url ? String(profile.avatar_url) : '';
