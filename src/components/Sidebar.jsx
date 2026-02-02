@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
 import { getAccessToken } from '../lib/session';
@@ -41,9 +41,13 @@ export default function Sidebar({ permissions = [], authType, profile }) {
   const profileName = profile
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
     : 'Profile';
-  const profileAvatar = profile?.avatar_url ? String(profile.avatar_url) : '';
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ? String(profile.avatar_url) : '');
   const updateEndpoint = authType === 'merchant' ? '/merchant/users' : '/platform-admins';
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    setAvatarUrl(profile?.avatar_url ? String(profile.avatar_url) : '');
+  }, [profile?.avatar_url]);
 
   const handleSelectPhoto = () => {
     if (!profile?.id) {
@@ -71,7 +75,10 @@ export default function Sidebar({ permissions = [], authType, profile }) {
         const text = await response.text();
         throw new Error(text || 'Failed to upload photo');
       }
-      window.location.reload();
+      const data = await response.json().catch(() => null);
+      if (data?.avatar_url) {
+        setAvatarUrl(String(data.avatar_url));
+      }
     } catch (err) {
       window.alert(err.message || 'Failed to upload photo');
     } finally {
@@ -274,9 +281,9 @@ export default function Sidebar({ permissions = [], authType, profile }) {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
             <div className="flex items-center gap-3 text-[13px]">
               <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--muted-ink)]">
-                {profileAvatar ? (
+                {avatarUrl ? (
                   <img
-                    src={profileAvatar}
+                    src={avatarUrl}
                     alt={profileName}
                     className="h-full w-full object-cover"
                   />
