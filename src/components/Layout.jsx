@@ -1,11 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
-export default function Layout({ onLogout, permissions, authType }) {
+export default function Layout({ onLogout, permissions, authType, profile }) {
   return (
     <div className="h-screen text-[var(--ink)]">
       <div className="flex h-full w-full flex-col gap-4 px-0 py-0 sm:flex-row sm:gap-4 lg:gap-5">
-        <Sidebar permissions={permissions} authType={authType} />
+        <Sidebar permissions={permissions} authType={authType} profile={profile} />
         <main className="flex h-full min-h-0 flex-1 min-w-0 flex-col space-y-6 overflow-hidden rounded-[28px] bg-[var(--surface)] p-4 shadow-sm sm:p-5 lg:p-6">
           <div className="surface-panel rise-fade rounded-[24px] px-5 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">

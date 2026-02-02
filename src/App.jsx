@@ -22,6 +22,7 @@ export default function App() {
   const [authed, setAuthed] = useState(false);
   const [authType, setAuthType] = useState(null);
   const [permissions, setPermissions] = useState([]);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -33,6 +34,7 @@ export default function App() {
           setAuthed(true);
           setAuthType('platform');
           setPermissions(profile.permissions || []);
+          setProfile(profile);
         }
       })
       .catch(() => {
@@ -44,6 +46,12 @@ export default function App() {
               setAuthed(true);
               setAuthType('merchant');
               setPermissions([]);
+              return auth.meMerchant();
+            }
+          })
+          .then((merchantProfile) => {
+            if (isMounted && merchantProfile) {
+              setProfile(merchantProfile);
             }
           })
           .catch(() => {
@@ -51,6 +59,7 @@ export default function App() {
               setAuthed(false);
               setAuthType(null);
               setPermissions([]);
+              setProfile(null);
             }
           })
           .finally(() => {
@@ -71,16 +80,18 @@ export default function App() {
 
   const handleLogin = async (type) => {
     if (type === 'merchant') {
-      await auth.meMerchant();
+      const merchantProfile = await auth.meMerchant();
       setAuthed(true);
       setAuthType('merchant');
       setPermissions([]);
+      setProfile(merchantProfile);
       return;
     }
     const profile = await auth.me();
     setAuthed(true);
     setAuthType('platform');
     setPermissions(profile.permissions || []);
+    setProfile(profile);
   };
 
   const handleLogout = async () => {
@@ -94,6 +105,7 @@ export default function App() {
       setAuthed(false);
       setAuthType(null);
       setPermissions([]);
+      setProfile(null);
     }
   };
 
@@ -117,7 +129,12 @@ export default function App() {
         element={
           authReady ? (
             authed ? (
-              <Layout onLogout={handleLogout} permissions={permissions} authType={authType} />
+              <Layout
+                onLogout={handleLogout}
+                permissions={permissions}
+                authType={authType}
+                profile={profile}
+              />
             ) : (
               <Navigate to="/login" replace />
             )

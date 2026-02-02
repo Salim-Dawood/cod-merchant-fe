@@ -29,7 +29,7 @@ const sections = [
   }
 ];
 
-export default function Sidebar({ permissions = [], authType }) {
+export default function Sidebar({ permissions = [], authType, profile }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState({
     Platform: true,
@@ -228,18 +228,28 @@ export default function Sidebar({ permissions = [], authType }) {
               </button>
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-              <div className="flex items-center gap-3 text-[13px]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--muted-ink)]">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className="flex items-center gap-3 text-[13px]">
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--muted-ink)]">
+                {profileAvatar ? (
+                  <img
+                    src={profileAvatar}
+                    alt={profileName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
                   <SidebarIcon name="user" />
-                </div>
-                <div>
-                  <p className="font-semibold text-[var(--ink)] tracking-[0.02em]">Brooklyn</p>
-                  <p className="text-[11px] text-[var(--muted-ink)] tracking-[0.2em] uppercase">Pro trial</p>
-                </div>
-                <span className="ml-auto text-[var(--muted-ink)]">v</span>
+                )}
               </div>
+              <div>
+                <p className="font-semibold text-[var(--ink)] tracking-[0.02em]">{profileName}</p>
+                <p className="text-[11px] text-[var(--muted-ink)] tracking-[0.2em] uppercase">
+                  {profile?.email || 'Pro trial'}
+                </p>
+              </div>
+              <span className="ml-auto text-[var(--muted-ink)]">v</span>
             </div>
+          </div>
           </div>
         )}
       </div>
@@ -455,3 +465,7 @@ function SidebarIcon({ name }) {
       return null;
   }
 }
+  const profileName = profile
+    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
+    : 'Profile';
+  const profileAvatar = profile?.avatar_url ? String(profile.avatar_url) : '';
