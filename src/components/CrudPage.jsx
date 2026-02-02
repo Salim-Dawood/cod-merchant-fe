@@ -492,7 +492,7 @@ export default function CrudPage({ resource, permissions = [] }) {
       </div>
 
       <div className="soft-panel rounded-[32px]">
-        <div className="overflow-visible">
+        <div className="max-h-[calc(100vh-320px)] overflow-hidden">
           <Table className="responsive-table w-full">
           <TableHeader className="bg-black text-white">
             <TableRow className="bg-black hover:bg-black">
@@ -504,17 +504,16 @@ export default function CrudPage({ resource, permissions = [] }) {
                   {header}
                 </TableHead>
               ))}
-              <TableHead className="text-white">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={headers.length + 2}>Loading...</TableCell>
+                <TableCell colSpan={headers.length + 1}>Loading...</TableCell>
               </TableRow>
             ) : filteredRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={headers.length + 2}>No data</TableCell>
+                <TableCell colSpan={headers.length + 1}>No data</TableCell>
               </TableRow>
             ) : (
               filteredRows.map((row) => {
@@ -567,27 +566,6 @@ export default function CrudPage({ resource, permissions = [] }) {
                         )}
                       </TableCell>
                     ))}
-                    <TableCell data-label="Actions">
-                      <div className="flex flex-wrap gap-2">
-                        {roleConfig && (
-                          <Button size="sm" variant="outline" onClick={() => openInfo(row)}>
-                            Info
-                          </Button>
-                        )}
-                        {(!resource.permissions?.update ||
-                          permissions.includes(resource.permissions.update)) && (
-                          <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                            Edit
-                          </Button>
-                        )}
-                        {(!resource.permissions?.delete ||
-                          permissions.includes(resource.permissions.delete)) && (
-                          <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
-                            Delete
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
                   </TableRow>
                 );
               })
