@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
+import { getAccessToken } from '../lib/session';
 import { cn } from '../lib/utils';
 
 const sections = [
@@ -41,7 +42,7 @@ export default function Sidebar({ permissions = [], authType, profile }) {
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
     : 'Profile';
   const profileAvatar = profile?.avatar_url ? String(profile.avatar_url) : '';
-  const updateEndpoint = authType === 'merchant' ? '/users' : '/platform-admins';
+  const updateEndpoint = authType === 'merchant' ? '/merchant/users' : '/platform-admins';
   const updateLabel = authType === 'merchant' ? 'user' : 'admin';
 
   const handleProfilePhotoChange = async () => {
@@ -53,9 +54,14 @@ export default function Sidebar({ permissions = [], authType, profile }) {
       return;
     }
     try {
+      const token = getAccessToken(authType || undefined);
       const response = await fetch(`${API_BASE_URL}${updateEndpoint}/${profile.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
         body: JSON.stringify({ avatar_url: nextUrl })
       });
       if (!response.ok) {
