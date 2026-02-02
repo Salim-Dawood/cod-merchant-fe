@@ -435,7 +435,7 @@ export default function CrudPage({ resource, permissions = [] }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full min-h-0 flex-col space-y-6">
       <div className="surface-panel rise-fade rounded-[32px] px-4 py-5 sm:px-6 sm:py-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -491,8 +491,8 @@ export default function CrudPage({ resource, permissions = [] }) {
         </div>
       </div>
 
-      <div className="soft-panel rounded-[32px]">
-        <div className="overflow-visible">
+      <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[32px]">
+        <div className="no-scrollbar h-full min-h-0 overflow-auto">
           <Table className="responsive-table w-full">
           <TableHeader className="bg-black text-white">
             <TableRow className="bg-black hover:bg-black">
