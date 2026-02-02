@@ -494,7 +494,7 @@ export default function CrudPage({ resource, permissions = [] }) {
       <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[32px]">
         <div className="no-scrollbar h-full min-h-0 overflow-auto">
           <Table className="responsive-table w-full">
-          <TableHeader className="bg-black text-white">
+          <TableHeader className="sticky top-0 z-10 bg-black text-white">
             <TableRow className="bg-black hover:bg-black">
               <TableHead className="text-white w-[240px] max-w-none sm:w-[300px]">
                 Profile
