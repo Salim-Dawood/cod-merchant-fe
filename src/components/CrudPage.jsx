@@ -531,6 +531,7 @@ export default function CrudPage({ resource, permissions = [] }) {
                   || fields.find((field) => field.key === 'email')?.key
                   || fields[0]?.key;
                 const avatarText = primaryField ? formatValue(row[primaryField]) : `Record ${row.id}`;
+                const avatarUrl = row.avatar_url ? String(row.avatar_url) : '';
 
                 return (
                   <TableRow key={row.id}>
@@ -539,8 +540,16 @@ export default function CrudPage({ resource, permissions = [] }) {
                       className="w-[240px] max-w-none sm:w-[300px] whitespace-normal break-words"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
-                          {getInitials(avatarText)}
+                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt={avatarText}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            getInitials(avatarText)
+                          )}
                         </div>
                         <div className="cell-clamp">
                           <div className="font-medium text-[var(--ink)]">
