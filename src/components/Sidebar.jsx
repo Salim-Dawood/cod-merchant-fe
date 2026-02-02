@@ -54,7 +54,7 @@ export default function Sidebar({ permissions = [], authType }) {
     <aside className="rise-fade flex-none">
       <div
         className={cn(
-          'glass-panel flex rounded-[32px] px-4 py-4 sm:px-5 sm:py-5 lg:h-[calc(100vh-1rem)] lg:px-5 lg:py-6',
+          'glass-panel flex rounded-[32px] px-4 py-4 sm:px-5 sm:py-5 lg:h-screen lg:px-5 lg:py-6',
           isCollapsed ? 'flex-row gap-4 sm:gap-4 lg:gap-5' : 'flex-col gap-6',
           isCollapsed ? 'w-[96px] px-4' : 'w-[280px] sm:w-[360px] lg:w-[420px]'
         )}

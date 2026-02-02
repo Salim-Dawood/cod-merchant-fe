@@ -29,20 +29,25 @@ html,
 body {
   height: 100%;
   width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 body {
   font-family: 'Manrope', 'Segoe UI', sans-serif;
   color: var(--ink);
   min-height: 100vh;
-  background-color: #ececec;
-  background-image:
-    radial-gradient(circle at top left, #f7f7f7 0%, transparent 45%),
-    radial-gradient(circle at top right, #f3f3f3 0%, transparent 50%);
+  background-color: var(--surface);
+  background-image: none;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
