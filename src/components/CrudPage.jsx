@@ -726,12 +726,6 @@ export default function CrudPage({ resource, permissions = [] }) {
                 return (
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
                     {field.label}
-                    <Input
-                      type={field.type}
-                      value={form[field.key] ?? ''}
-                      onChange={(event) => handleChange(field.key, event.target.value)}
-                      className={hasError ? 'border-red-300 focus-visible:ring-red-200' : ''}
-                    />
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         ref={avatarInputRef}
