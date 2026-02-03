@@ -120,7 +120,8 @@ function normalizeServerValidation(data, fields) {
 }
 
 export default function CrudPage({ resource, permissions = [], authType }) {
-  const canRead = authType === 'merchant'
+  const isMerchant = authType === 'merchant';
+  const canRead = isMerchant
     ? true
     : resource.permissions?.read
     ? permissions.includes(resource.permissions.read)
@@ -528,12 +529,12 @@ export default function CrudPage({ resource, permissions = [], authType }) {
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Highest ID</p>
               <p className="text-lg font-semibold">{stats.maxId || '-'}</p>
             </div>
-            {resource.permissions?.create ? (
+            {isMerchant || !resource.permissions?.create ? (
+              <Button onClick={openCreate}>New Record</Button>
+            ) : (
               permissions.includes(resource.permissions.create) && (
                 <Button onClick={openCreate}>New Record</Button>
               )
-            ) : (
-              <Button onClick={openCreate}>New Record</Button>
             )}
           </div>
         </div>
@@ -655,13 +656,15 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                             Info
                           </Button>
                         )}
-                        {(!resource.permissions?.update ||
+                        {(isMerchant ||
+                          !resource.permissions?.update ||
                           permissions.includes(resource.permissions.update)) && (
                           <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
                             Edit
                           </Button>
                         )}
-                        {(!resource.permissions?.delete ||
+                        {(isMerchant ||
+                          !resource.permissions?.delete ||
                           permissions.includes(resource.permissions.delete)) && (
                           <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
                             Delete
