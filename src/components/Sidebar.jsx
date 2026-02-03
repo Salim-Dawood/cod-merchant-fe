@@ -327,9 +327,9 @@ export default function Sidebar({ permissions = [], authType, profile }) {
                 <div className="grid gap-4">
                   <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
                     <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--muted-ink)]">
-                      {profileAvatar ? (
+                      {avatarUrl ? (
                         <img
-                          src={profileAvatar}
+                          src={avatarUrl}
                           alt={profileName}
                           className="h-full w-full object-cover"
                         />
