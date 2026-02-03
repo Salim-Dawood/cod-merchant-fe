@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api } from '../lib/api';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { api, API_BASE_URL } from '../lib/api';
+import { getAccessToken } from '../lib/session';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
@@ -138,9 +139,20 @@ export default function CrudPage({ resource, permissions = [] }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showPasswords, setShowPasswords] = useState({});
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef(null);
 
   const fields = useMemo(() => resource.fields, [resource.fields]);
   const roleConfig = roleInfoConfig[resource.key];
+  const avatarUploadEndpoint = useMemo(() => {
+    if (resource.key === 'platform-admins') {
+      return '/platform-admins';
+    }
+    if (resource.key === 'users') {
+      return '/merchant/users';
+    }
+    return '';
+  }, [resource.key]);
 
   const load = useCallback(async () => {
     try {
@@ -429,6 +441,46 @@ export default function CrudPage({ resource, permissions = [] }) {
 
   const statusPills = Object.entries(stats.statusCounts || {}).slice(0, 3);
 
+  const handleAvatarSelect = () => {
+    if (!editRow?.id || !avatarUploadEndpoint) {
+      return;
+    }
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !editRow?.id || !avatarUploadEndpoint) {
+      return;
+    }
+    try {
+      setAvatarUploading(true);
+      const token = getAccessToken();
+      const formData = new FormData();
+      formData.append('photo', file);
+      const response = await fetch(`${API_BASE_URL}${avatarUploadEndpoint}/${editRow.id}/photo`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
+        body: formData
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to upload photo');
+      }
+      const data = await response.json().catch(() => null);
+      const nextUrl = data?.avatar_url || data?.url;
+      if (nextUrl) {
+        setForm((prev) => ({ ...prev, avatar_url: String(nextUrl) }));
+      }
+    } catch (err) {
+      window.alert(err.message || 'Failed to upload photo');
+    } finally {
+      setAvatarUploading(false);
+      event.target.value = '';
+    }
+  };
+
   if (!canRead) {
     return (
       <div className="surface-panel rise-fade rounded-3xl px-6 py-8">
@@ -670,6 +722,43 @@ export default function CrudPage({ resource, permissions = [] }) {
               }
 
               const hasError = Boolean(fieldErrors[field.key]);
+              if (field.key === 'avatar_url') {
+                return (
+                  <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                    {field.label}
+                    <Input
+                      type={field.type}
+                      value={form[field.key] ?? ''}
+                      onChange={(event) => handleChange(field.key, event.target.value)}
+                      className={hasError ? 'border-red-300 focus-visible:ring-red-200' : ''}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleAvatarSelect}
+                        disabled={!editRow?.id || !avatarUploadEndpoint || avatarUploading}
+                      >
+                        {avatarUploading ? 'Uploading...' : 'Upload Photo'}
+                      </Button>
+                      {!editRow?.id && (
+                        <span className="text-xs text-[var(--muted-ink)]">Save the record before uploading.</span>
+                      )}
+                    </div>
+                    {hasError && (
+                      <span className="text-xs text-red-600">{fieldErrors[field.key]}</span>
+                    )}
+                  </label>
+                );
+              }
               return (
                 <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
                   {field.label}
