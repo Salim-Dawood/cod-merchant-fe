@@ -104,7 +104,7 @@ export default function Sidebar({ permissions = [], authType, profile }) {
   );
 
   const visibleLinks = visibleSections.flatMap((section) => {
-    if (authType === 'merchant' && section.title === 'Merchant') {
+    if (section.title === 'Merchant') {
       return section.links;
     }
     return section.links.filter((link) => !link.permission || permissions.includes(link.permission));
@@ -214,7 +214,7 @@ export default function Sidebar({ permissions = [], authType, profile }) {
             <nav className="space-y-6">
               {visibleSections.map((section) => {
                 const sectionLinks =
-                  authType === 'merchant' && section.title === 'Merchant'
+                  section.title === 'Merchant'
                     ? section.links
                     : section.links.filter((link) => !link.permission || permissions.includes(link.permission));
 
