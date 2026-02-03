@@ -36,9 +36,7 @@ export default function Sidebar({ permissions = [], authType, profile }) {
     Merchant: true
   });
 
-  const profileName = profile
-    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
-    : 'Profile';
+  const profileName = profile?.email || 'Profile';
   const avatarStorageKey = profile?.id
     ? `profile_avatar_${authType === 'merchant' ? 'users' : 'platform-admins'}_${profile.id}`
     : '';
