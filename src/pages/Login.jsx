@@ -91,7 +91,7 @@ export default function LoginPage({ onSuccess }) {
     }`;
 
   return (
-    <div className="min-h-screen px-4 py-12 text-[var(--ink)]">
+    <div className="login-page min-h-screen px-4 py-12 text-[var(--ink)]">
       <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
         <div className="glass-panel relative overflow-hidden rounded-[32px] p-6 sm:p-8 lg:p-10">
           <div className="absolute -right-24 -top-24 h-52 w-52 rounded-full bg-[var(--accent)]/20 blur-3xl" />
