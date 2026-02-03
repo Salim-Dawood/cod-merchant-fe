@@ -45,6 +45,43 @@ export default function LoginPage({ onSuccess }) {
     return Object.keys(nextErrors).length === 0 ? '' : 'Please fix the highlighted fields.';
   };
 
+  const validateField = (key, value) => {
+    const trimmed = typeof value === 'string' ? value.trim() : value;
+    switch (key) {
+      case 'merchantName':
+        return mode === 'register' && !trimmed ? 'Merchant name is required.' : '';
+      case 'merchantEmail':
+        if (!trimmed) {
+          return '';
+        }
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(trimmed))
+          ? ''
+          : 'Enter a valid email address.';
+      case 'email': {
+        const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(trimmed));
+        return !trimmed || !emailValid ? 'Enter a valid email address.' : '';
+      }
+      case 'password':
+        return !trimmed || String(trimmed).length < 6 ? 'Password must be at least 6 characters.' : '';
+      default:
+        return '';
+    }
+  };
+
+  const handleFieldChange = (key, value, setter) => {
+    setter(value);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      const message = validateField(key, value);
+      if (message) {
+        next[key] = message;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  };
+
   const normalizeFieldKey = (key) => {
     if (key === 'admin_email') {
       return 'email';
@@ -215,7 +252,7 @@ export default function LoginPage({ onSuccess }) {
         </div>
 
         <div className="surface-panel rounded-[32px] p-6 sm:p-8 lg:p-10">
-          <form className="grid gap-5" onSubmit={handleSubmit}>
+          <form className="grid gap-5" onSubmit={handleSubmit} noValidate>
             <div>
               <h2 className="font-display text-2xl">
                 {mode === 'register'
@@ -287,8 +324,7 @@ export default function LoginPage({ onSuccess }) {
                   <Input
                     type="text"
                     value={merchantName}
-                    onChange={(event) => setMerchantName(event.target.value)}
-                    required
+                    onChange={(event) => handleFieldChange('merchantName', event.target.value, setMerchantName)}
                     className={fieldErrors.merchantName ? 'border-red-300 focus-visible:ring-red-200' : ''}
                   />
                   {fieldErrors.merchantName && (
@@ -300,7 +336,9 @@ export default function LoginPage({ onSuccess }) {
                   <Input
                     type="email"
                     value={merchantEmail}
-                    onChange={(event) => setMerchantEmail(event.target.value)}
+                    onChange={(event) =>
+                      handleFieldChange('merchantEmail', event.target.value, setMerchantEmail)
+                    }
                     className={fieldErrors.merchantEmail ? 'border-red-300 focus-visible:ring-red-200' : ''}
                   />
                   {fieldErrors.merchantEmail && (
@@ -369,8 +407,7 @@ export default function LoginPage({ onSuccess }) {
               <Input
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
+                onChange={(event) => handleFieldChange('email', event.target.value, setEmail)}
                 className={fieldErrors.email ? 'border-red-300 focus-visible:ring-red-200' : ''}
               />
               {fieldErrors.email && (
@@ -388,9 +425,8 @@ export default function LoginPage({ onSuccess }) {
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => handleFieldChange('password', event.target.value, setPassword)}
                   className={`pr-16 ${fieldErrors.password ? 'border-red-300 focus-visible:ring-red-200' : ''}`}
-                  required
                 />
                 <button
                   type="button"
