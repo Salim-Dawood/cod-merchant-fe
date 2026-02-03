@@ -150,7 +150,7 @@ export default function App() {
           <Route
             key={route.path}
             path={route.path}
-            element={<CrudPage resource={route.resource} permissions={permissions} />}
+            element={<CrudPage resource={route.resource} permissions={permissions} authType={authType} />}
           />
         ))}
       </Route>

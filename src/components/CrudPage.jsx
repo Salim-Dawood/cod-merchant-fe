@@ -119,8 +119,10 @@ function normalizeServerValidation(data, fields) {
   return { errors, message };
 }
 
-export default function CrudPage({ resource, permissions = [] }) {
-  const canRead = resource.permissions?.read
+export default function CrudPage({ resource, permissions = [], authType }) {
+  const canRead = authType === 'merchant'
+    ? true
+    : resource.permissions?.read
     ? permissions.includes(resource.permissions.read)
     : true;
   const [rows, setRows] = useState([]);
