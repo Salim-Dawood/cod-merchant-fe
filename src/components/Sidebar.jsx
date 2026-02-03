@@ -103,9 +103,12 @@ export default function Sidebar({ permissions = [], authType, profile }) {
     authType === 'merchant' ? section.title === 'Merchant' : true
   );
 
-  const visibleLinks = visibleSections.flatMap((section) =>
-    section.links.filter((link) => !link.permission || permissions.includes(link.permission))
-  );
+  const visibleLinks = visibleSections.flatMap((section) => {
+    if (authType === 'merchant' && section.title === 'Merchant') {
+      return section.links;
+    }
+    return section.links.filter((link) => !link.permission || permissions.includes(link.permission));
+  });
   const toggleSection = (title) => {
     setOpenSections((prev) => ({
       ...prev,
@@ -210,9 +213,10 @@ export default function Sidebar({ permissions = [], authType, profile }) {
 
             <nav className="space-y-6">
               {visibleSections.map((section) => {
-                const sectionLinks = section.links.filter(
-                  (link) => !link.permission || permissions.includes(link.permission)
-                );
+                const sectionLinks =
+                  authType === 'merchant' && section.title === 'Merchant'
+                    ? section.links
+                    : section.links.filter((link) => !link.permission || permissions.includes(link.permission));
 
                 if (sectionLinks.length === 0) {
                   return null;
