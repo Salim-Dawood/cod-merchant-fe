@@ -25,66 +25,6 @@ export default function App() {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    let rafId = null;
-
-    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-    const applyScale = () => {
-      const root = document.getElementById('root');
-      if (!root) {
-        return;
-      }
-      const content = root.firstElementChild || root;
-      const { scrollWidth, scrollHeight } = content;
-      const availableWidth = window.innerWidth;
-      const availableHeight = window.innerHeight;
-      if (!scrollWidth || !scrollHeight) {
-        return;
-      }
-      const scale = clamp(
-        Math.min(availableWidth / scrollWidth, availableHeight / scrollHeight) * 0.98,
-        0.5,
-        1
-      );
-      document.documentElement.style.setProperty('--ui-scale', `${scale}`);
-    };
-
-    const schedule = () => {
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
-      rafId = requestAnimationFrame(applyScale);
-    };
-
-    let observer = null;
-
-    schedule();
-    if (window.ResizeObserver) {
-      observer = new ResizeObserver(() => schedule());
-      const root = document.getElementById('root');
-      if (root) {
-        observer.observe(root);
-        if (root.firstElementChild) {
-          observer.observe(root.firstElementChild);
-        }
-      }
-    }
-    window.addEventListener('resize', schedule);
-    window.addEventListener('orientationchange', schedule);
-
-    return () => {
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
-      if (observer) {
-        observer.disconnect();
-      }
-      window.removeEventListener('resize', schedule);
-      window.removeEventListener('orientationchange', schedule);
-    };
-  }, []);
-
-  useEffect(() => {
     let isMounted = true;
     auth
       .refresh()
