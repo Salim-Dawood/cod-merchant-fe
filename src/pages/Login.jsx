@@ -17,29 +17,83 @@ export default function LoginPage({ onSuccess }) {
   const [success, setSuccess] = useState('');
   const [mode, setMode] = useState('admin');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const validateForm = () => {
+    const nextErrors = {};
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
 
     if (mode === 'register') {
       if (!merchantName.trim()) {
-        return 'Merchant name is required.';
+        nextErrors.merchantName = 'Merchant name is required.';
       }
     }
 
     if (!trimmedEmail || !emailValid) {
-      return 'Enter a valid email address.';
+      nextErrors.email = 'Enter a valid email address.';
     }
 
     if (trimmedPassword.length < 6) {
-      return 'Password must be at least 6 characters.';
+      nextErrors.password = 'Password must be at least 6 characters.';
     }
 
-    return '';
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0 ? '' : 'Please fix the highlighted fields.';
+  };
+
+  const normalizeFieldKey = (key) => {
+    if (key === 'admin_email') {
+      return 'email';
+    }
+    if (key === 'admin_password') {
+      return 'password';
+    }
+    if (key === 'merchant_email') {
+      return 'merchantEmail';
+    }
+    if (key === 'merchant_phone') {
+      return 'merchantPhone';
+    }
+    if (key === 'merchant_name') {
+      return 'merchantName';
+    }
+    if (key === 'merchant_city') {
+      return 'merchantCity';
+    }
+    if (key === 'merchant_country') {
+      return 'merchantCountry';
+    }
+    if (key === 'merchant_address') {
+      return 'merchantAddress';
+    }
+    return key;
+  };
+
+  const parseServerError = (message, data) => {
+    if (data && typeof data === 'object') {
+      if (typeof data.message === 'string') {
+        return { message: data.message, errors: data.errors || {} };
+      }
+      if (typeof data.error === 'string') {
+        return { message: data.error, errors: data.errors || {} };
+      }
+      if (data.errors && typeof data.errors === 'object') {
+        return { message: '', errors: data.errors };
+      }
+    }
+    if (typeof message === 'string' && message.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(message);
+        return parseServerError('', parsed);
+      } catch {
+        return { message, errors: {} };
+      }
+    }
+    return { message: message || 'Request failed', errors: {} };
   };
 
   const handleSubmit = async (event) => {
@@ -54,6 +108,7 @@ export default function LoginPage({ onSuccess }) {
       setLoading(true);
       setError('');
       setSuccess('');
+      setFieldErrors({});
       if (mode === 'register') {
         await auth.register({
           name: merchantName,
@@ -82,11 +137,25 @@ export default function LoginPage({ onSuccess }) {
         navigate('/platform/platform-admins', { replace: true });
       }
     } catch (err) {
+      const parsed = parseServerError(err?.message, err?.data);
+      const nextErrors = {};
+      if (parsed.errors) {
+        Object.entries(parsed.errors).forEach(([key, value]) => {
+          const mappedKey = normalizeFieldKey(key);
+          const message = Array.isArray(value) ? value[0] : value;
+          if (typeof message === 'string') {
+            nextErrors[mappedKey] = message;
+          }
+        });
+      }
+      if (Object.keys(nextErrors).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, ...nextErrors }));
+      }
       if (mode === 'admin') {
-        const base = err.message || 'Admin login failed.';
+        const base = parsed.message || 'Admin login failed.';
         setError(`${base} If you are a merchant, use Merchant Login.`);
       } else {
-        setError(err.message || 'Request failed');
+        setError(parsed.message || 'Request failed');
       }
     } finally {
       setLoading(false);
@@ -220,7 +289,11 @@ export default function LoginPage({ onSuccess }) {
                     value={merchantName}
                     onChange={(event) => setMerchantName(event.target.value)}
                     required
+                    className={fieldErrors.merchantName ? 'border-red-300 focus-visible:ring-red-200' : ''}
                   />
+                  {fieldErrors.merchantName && (
+                    <span className="text-xs text-red-600">{fieldErrors.merchantName}</span>
+                  )}
                 </label>
                 <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
                   Merchant Email
@@ -228,7 +301,11 @@ export default function LoginPage({ onSuccess }) {
                     type="email"
                     value={merchantEmail}
                     onChange={(event) => setMerchantEmail(event.target.value)}
+                    className={fieldErrors.merchantEmail ? 'border-red-300 focus-visible:ring-red-200' : ''}
                   />
+                  {fieldErrors.merchantEmail && (
+                    <span className="text-xs text-red-600">{fieldErrors.merchantEmail}</span>
+                  )}
                 </label>
                 <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
                   Merchant Phone
@@ -236,7 +313,11 @@ export default function LoginPage({ onSuccess }) {
                     type="text"
                     value={merchantPhone}
                     onChange={(event) => setMerchantPhone(event.target.value)}
+                    className={fieldErrors.merchantPhone ? 'border-red-300 focus-visible:ring-red-200' : ''}
                   />
+                  {fieldErrors.merchantPhone && (
+                    <span className="text-xs text-red-600">{fieldErrors.merchantPhone}</span>
+                  )}
                 </label>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
@@ -245,7 +326,11 @@ export default function LoginPage({ onSuccess }) {
                       type="text"
                       value={merchantCountry}
                       onChange={(event) => setMerchantCountry(event.target.value)}
+                      className={fieldErrors.merchantCountry ? 'border-red-300 focus-visible:ring-red-200' : ''}
                     />
+                    {fieldErrors.merchantCountry && (
+                      <span className="text-xs text-red-600">{fieldErrors.merchantCountry}</span>
+                    )}
                   </label>
                   <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
                     City
@@ -253,7 +338,11 @@ export default function LoginPage({ onSuccess }) {
                       type="text"
                       value={merchantCity}
                       onChange={(event) => setMerchantCity(event.target.value)}
+                      className={fieldErrors.merchantCity ? 'border-red-300 focus-visible:ring-red-200' : ''}
                     />
+                    {fieldErrors.merchantCity && (
+                      <span className="text-xs text-red-600">{fieldErrors.merchantCity}</span>
+                    )}
                   </label>
                 </div>
                 <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
@@ -262,7 +351,11 @@ export default function LoginPage({ onSuccess }) {
                     type="text"
                     value={merchantAddress}
                     onChange={(event) => setMerchantAddress(event.target.value)}
+                    className={fieldErrors.merchantAddress ? 'border-red-300 focus-visible:ring-red-200' : ''}
                   />
+                  {fieldErrors.merchantAddress && (
+                    <span className="text-xs text-red-600">{fieldErrors.merchantAddress}</span>
+                  )}
                 </label>
               </div>
             )}
@@ -278,7 +371,11 @@ export default function LoginPage({ onSuccess }) {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
+                className={fieldErrors.email ? 'border-red-300 focus-visible:ring-red-200' : ''}
               />
+              {fieldErrors.email && (
+                <span className="text-xs text-red-600">{fieldErrors.email}</span>
+              )}
             </label>
 
             <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
@@ -292,7 +389,7 @@ export default function LoginPage({ onSuccess }) {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="pr-16"
+                  className={`pr-16 ${fieldErrors.password ? 'border-red-300 focus-visible:ring-red-200' : ''}`}
                   required
                 />
                 <button
@@ -303,6 +400,9 @@ export default function LoginPage({ onSuccess }) {
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <span className="text-xs text-red-600">{fieldErrors.password}</span>
+              )}
             </label>
 
             <div className="grid gap-3">
