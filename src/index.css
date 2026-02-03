@@ -6,6 +6,7 @@
 
 :root {
   color-scheme: light;
+  --ui-scale: 1;
   --ink: #111418;
   --muted-ink: #5f6368;
   --accent: #1f7a6b;
@@ -60,6 +61,11 @@ body::-webkit-scrollbar {
 #root {
   min-height: 100vh;
   min-width: 0;
+  height: 100%;
+  transform: scale(var(--ui-scale));
+  transform-origin: top left;
+  width: calc(100% / var(--ui-scale));
+  height: calc(100% / var(--ui-scale));
 }
 
 .font-display {
@@ -150,6 +156,7 @@ main {
   display: table-cell;
   padding: 1rem;
   font-size: 0.875rem;
+  word-break: break-word;
 }
 
 .responsive-table tbody td::before {
@@ -188,10 +195,77 @@ main {
 
 @media (max-width: 900px) {
   body {
-    overflow-x: auto;
+    overflow-x: hidden;
+    overflow-y: hidden;
   }
 
   #root {
     min-width: 0;
+  }
+}
+
+@media (max-width: 1400px) {
+  :root {
+    --ui-scale: 0.95;
+  }
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --ui-scale: 0.9;
+  }
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --ui-scale: 0.85;
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --ui-scale: 0.8;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --ui-scale: 0.75;
+  }
+
+  .responsive-table tbody td,
+  .responsive-table thead th {
+    padding: 0.6rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --ui-scale: 0.7;
+  }
+}
+
+@media (max-width: 520px) {
+  :root {
+    --ui-scale: 0.65;
+  }
+}
+
+@media (max-height: 800px) {
+  :root {
+    --ui-scale: 0.9;
+  }
+}
+
+@media (max-height: 720px) {
+  :root {
+    --ui-scale: 0.85;
+  }
+}
+
+@media (max-height: 640px) {
+  :root {
+    --ui-scale: 0.8;
   }
 }
