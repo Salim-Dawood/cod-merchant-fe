@@ -84,7 +84,12 @@ export default function LoginPage({ onSuccess }) {
         navigate('/platform/platform-admins', { replace: true });
       }
     } catch (err) {
-      setError(err.message || 'Request failed');
+      if (mode === 'admin') {
+        const base = err.message || 'Admin login failed.';
+        setError(`${base} If you are a merchant, use Merchant Login.`);
+      } else {
+        setError(err.message || 'Request failed');
+      }
     } finally {
       setLoading(false);
     }
