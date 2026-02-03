@@ -80,6 +80,11 @@ export default function LoginPage({ onSuccess }) {
         navigate('/merchant/merchants', { replace: true });
       } else {
         await auth.login(email, password);
+        const profile = await auth.me().catch(() => null);
+        if (!profile?.platform_role_id) {
+          await auth.logout().catch(() => {});
+          throw new Error('Please login as merchant.');
+        }
         await onSuccess?.('platform');
         navigate('/platform/platform-admins', { replace: true });
       }
