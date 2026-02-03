@@ -39,18 +39,63 @@ export default function Sidebar({ permissions = [], authType, profile }) {
   const profileName = profile
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
     : 'Profile';
-  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ? String(profile.avatar_url) : '');
+  const avatarStorageKey = profile?.id
+    ? `profile_avatar_${authType === 'merchant' ? 'users' : 'platform-admins'}_${profile.id}`
+    : '';
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    const fromProfile = profile?.avatar_url ? String(profile.avatar_url) : '';
+    if (fromProfile || !avatarStorageKey) {
+      return fromProfile;
+    }
+    try {
+      return localStorage.getItem(avatarStorageKey) || '';
+    } catch {
+      return '';
+    }
+  });
 
   useEffect(() => {
-    setAvatarUrl(profile?.avatar_url ? String(profile.avatar_url) : '');
-  }, [profile?.avatar_url]);
+    const fromProfile = profile?.avatar_url ? String(profile.avatar_url) : '';
+    if (fromProfile) {
+      setAvatarUrl(fromProfile);
+      if (avatarStorageKey) {
+        try {
+          localStorage.setItem(avatarStorageKey, fromProfile);
+        } catch {
+          // ignore storage failures
+        }
+      }
+      return;
+    }
+    if (!avatarStorageKey) {
+      setAvatarUrl('');
+      return;
+    }
+    try {
+      setAvatarUrl(localStorage.getItem(avatarStorageKey) || '');
+    } catch {
+      setAvatarUrl('');
+    }
+  }, [profile?.avatar_url, avatarStorageKey]);
 
   useEffect(() => {
     const handleAvatarUpdate = (event) => {
       if (!event?.detail || event.detail.id !== profile?.id) {
         return;
       }
-      setAvatarUrl(event.detail.avatar_url || '');
+      const nextUrl = event.detail.avatar_url || '';
+      setAvatarUrl(nextUrl);
+      if (avatarStorageKey) {
+        try {
+          if (nextUrl) {
+            localStorage.setItem(avatarStorageKey, nextUrl);
+          } else {
+            localStorage.removeItem(avatarStorageKey);
+          }
+        } catch {
+          // ignore storage failures
+        }
+      }
     };
     window.addEventListener('profile-avatar-updated', handleAvatarUpdate);
     return () => window.removeEventListener('profile-avatar-updated', handleAvatarUpdate);

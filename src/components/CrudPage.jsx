@@ -472,6 +472,11 @@ export default function CrudPage({ resource, permissions = [] }) {
       const nextUrl = data?.avatar_url || data?.url;
       if (nextUrl) {
         setForm((prev) => ({ ...prev, avatar_url: String(nextUrl) }));
+        try {
+          localStorage.setItem(`profile_avatar_${resource.key}_${editRow.id}`, String(nextUrl));
+        } catch {
+          // ignore storage failures
+        }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent('profile-avatar-updated', {
