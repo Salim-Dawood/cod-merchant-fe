@@ -8,8 +8,6 @@ export default function LoginPage({ onSuccess }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [merchantName, setMerchantName] = useState('');
   const [merchantEmail, setMerchantEmail] = useState('');
   const [merchantPhone, setMerchantPhone] = useState('');
@@ -30,9 +28,6 @@ export default function LoginPage({ onSuccess }) {
     if (mode === 'register') {
       if (!merchantName.trim()) {
         return 'Merchant name is required.';
-      }
-      if (!firstName.trim() || !lastName.trim()) {
-        return 'Owner first and last name are required.';
       }
     }
 
@@ -67,8 +62,6 @@ export default function LoginPage({ onSuccess }) {
           country: merchantCountry,
           city: merchantCity,
           address: merchantAddress,
-          admin_first_name: firstName,
-          admin_last_name: lastName,
           admin_email: email,
           admin_password: password
         });
@@ -261,26 +254,6 @@ export default function LoginPage({ onSuccess }) {
                     onChange={(event) => setMerchantAddress(event.target.value)}
                   />
                 </label>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                    Admin First Name
-                    <Input
-                      type="text"
-                      value={firstName}
-                      onChange={(event) => setFirstName(event.target.value)}
-                      required
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                    Admin Last Name
-                    <Input
-                      type="text"
-                      value={lastName}
-                      onChange={(event) => setLastName(event.target.value)}
-                      required
-                    />
-                  </label>
-                </div>
               </div>
             )}
 
