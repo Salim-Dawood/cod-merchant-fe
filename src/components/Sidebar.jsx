@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { API_BASE_URL } from '../lib/api';
-import { getAccessToken } from '../lib/session';
 import { cn } from '../lib/utils';
 
 const sections = [
@@ -42,49 +40,21 @@ export default function Sidebar({ permissions = [], authType, profile }) {
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
     : 'Profile';
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ? String(profile.avatar_url) : '');
-  const updateEndpoint = authType === 'merchant' ? '/merchant/users' : '/platform-admins';
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     setAvatarUrl(profile?.avatar_url ? String(profile.avatar_url) : '');
   }, [profile?.avatar_url]);
 
-  const handleSelectPhoto = () => {
-    if (!profile?.id) {
-      return;
-    }
-    fileInputRef.current?.click();
-  };
-
-  const handlePhotoUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !profile?.id) {
-      return;
-    }
-    try {
-      const token = getAccessToken(authType || undefined);
-      const formData = new FormData();
-      formData.append('photo', file);
-      const response = await fetch(`${API_BASE_URL}${updateEndpoint}/${profile.id}/photo`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        credentials: 'include',
-        body: formData
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Failed to upload photo');
+  useEffect(() => {
+    const handleAvatarUpdate = (event) => {
+      if (!event?.detail || event.detail.id !== profile?.id) {
+        return;
       }
-      const data = await response.json().catch(() => null);
-      if (data?.avatar_url) {
-        setAvatarUrl(String(data.avatar_url));
-      }
-    } catch (err) {
-      window.alert(err.message || 'Failed to upload photo');
-    } finally {
-      event.target.value = '';
-    }
-  };
+      setAvatarUrl(event.detail.avatar_url || '');
+    };
+    window.addEventListener('profile-avatar-updated', handleAvatarUpdate);
+    return () => window.removeEventListener('profile-avatar-updated', handleAvatarUpdate);
+  }, [profile?.id]);
 
   const visibleSections = sections.filter((section) =>
     authType === 'merchant' ? section.title === 'Merchant' : true
@@ -299,20 +269,6 @@ export default function Sidebar({ permissions = [], authType, profile }) {
               </div>
               <span className="ml-auto text-[var(--muted-ink)]">v</span>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoUpload}
-            />
-            <button
-              type="button"
-              onClick={handleSelectPhoto}
-              className="mt-3 flex w-full items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
-            >
-              Upload Photo
-            </button>
           </div>
           </div>
         )}

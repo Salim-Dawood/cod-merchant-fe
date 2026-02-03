@@ -472,6 +472,13 @@ export default function CrudPage({ resource, permissions = [] }) {
       const nextUrl = data?.avatar_url || data?.url;
       if (nextUrl) {
         setForm((prev) => ({ ...prev, avatar_url: String(nextUrl) }));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('profile-avatar-updated', {
+              detail: { id: editRow.id, avatar_url: String(nextUrl) }
+            })
+          );
+        }
       }
     } catch (err) {
       window.alert(err.message || 'Failed to upload photo');
@@ -725,7 +732,7 @@ export default function CrudPage({ resource, permissions = [] }) {
               if (field.key === 'avatar_url') {
                 return (
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                    {field.label}
+                    {'Photo'}
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         ref={avatarInputRef}
