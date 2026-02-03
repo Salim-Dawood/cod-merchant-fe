@@ -294,6 +294,9 @@ export default function CrudPage({ resource, permissions = [] }) {
   const validateForm = () => {
     const nextErrors = {};
     fields.forEach((field) => {
+      if (field.readOnly) {
+        return;
+      }
       if (!field.required || field.type === 'boolean') {
         return;
       }
@@ -315,6 +318,9 @@ export default function CrudPage({ resource, permissions = [] }) {
       }
       const payload = {};
       fields.forEach((field) => {
+        if (field.readOnly) {
+          return;
+        }
         const value = form[field.key];
         if (value === '' || value === null || value === undefined) {
           return;
@@ -617,6 +623,9 @@ export default function CrudPage({ resource, permissions = [] }) {
           </DialogHeader>
           <div className="grid gap-4 md:grid-cols-2">
             {fields.map((field) => {
+              if (field.readOnly) {
+                return null;
+              }
               if (field.type === 'select' || field.ref) {
                 const options = field.ref ? refOptions[field.key] || [] : field.options || [];
                 const hasError = Boolean(fieldErrors[field.key]);

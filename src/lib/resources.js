@@ -290,7 +290,11 @@ const resources = {
           type: 'select',
           options: ['draft', 'active', 'hidden', 'out_of_stock', 'archived']
         },
-        { key: 'is_active', label: 'Active', type: 'boolean' }
+        { key: 'is_active', label: 'Active', type: 'boolean' },
+        { key: 'created_by', label: 'Created By', type: 'number', readOnly: true },
+        { key: 'created_at', label: 'Created At', type: 'text', readOnly: true },
+        { key: 'updated_by', label: 'Updated By', type: 'number', readOnly: true },
+        { key: 'updated_at', label: 'Updated At', type: 'text', readOnly: true }
       ]
     },
     {
@@ -305,7 +309,11 @@ const resources = {
       fields: [
         { key: 'name', label: 'Name', type: 'text', required: true },
         { key: 'slug', label: 'Slug', type: 'text', required: true },
-        { key: 'is_active', label: 'Active', type: 'boolean' }
+        { key: 'is_active', label: 'Active', type: 'boolean' },
+        { key: 'created_by', label: 'Created By', type: 'number', readOnly: true },
+        { key: 'created_at', label: 'Created At', type: 'text', readOnly: true },
+        { key: 'updated_by', label: 'Updated By', type: 'number', readOnly: true },
+        { key: 'updated_at', label: 'Updated At', type: 'text', readOnly: true }
       ]
     },
     {

@@ -3,6 +3,16 @@ import { NavLink } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
 import { getAccessToken } from '../lib/session';
 import { cn } from '../lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from './ui/dialog';
+import { Button } from './ui/button';
 
 const sections = [
   {
@@ -37,6 +47,7 @@ export default function Sidebar({ permissions = [], authType, profile }) {
     Platform: true,
     Merchant: true
   });
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   const profileName = profile
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Profile'
@@ -299,20 +310,58 @@ export default function Sidebar({ permissions = [], authType, profile }) {
               </div>
               <span className="ml-auto text-[var(--muted-ink)]">v</span>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoUpload}
-            />
-            <button
-              type="button"
-              onClick={handleSelectPhoto}
-              className="mt-3 flex w-full items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
-            >
-              Upload Photo
-            </button>
+            <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  className="mt-3 flex w-full items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
+                >
+                  Manage Profile
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Profile</DialogTitle>
+                  <DialogDescription>Update your photo and profile details.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4">
+                  <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                    <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--muted-ink)]">
+                      {profileAvatar ? (
+                        <img
+                          src={profileAvatar}
+                          alt={profileName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <SidebarIcon name="user" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[var(--ink)] tracking-[0.02em]">{profileName}</p>
+                      <p className="text-[12px] text-[var(--muted-ink)]">
+                        {profile?.email || 'Pro trial'}
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                  />
+                  <Button type="button" onClick={handleSelectPhoto}>
+                    Upload Photo
+                  </Button>
+                </div>
+                <DialogFooter>
+                  <Button variant="secondary" type="button" onClick={() => setProfileDialogOpen(false)}>
+                    Close
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
           </div>
         )}
