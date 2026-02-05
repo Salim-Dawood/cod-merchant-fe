@@ -140,6 +140,8 @@ export default function CrudPage({ resource, permissions = [], authType }) {
   const [permissionLinkMap, setPermissionLinkMap] = useState({});
   const [rolePermissionOptions, setRolePermissionOptions] = useState([]);
   const [selectedRolePermissions, setSelectedRolePermissions] = useState([]);
+  const [rolePermOpen, setRolePermOpen] = useState(false);
+  const [rolePermQuery, setRolePermQuery] = useState('');
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoRole, setInfoRole] = useState(null);
   const [infoPermissions, setInfoPermissions] = useState([]);
@@ -342,6 +344,8 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     setSelectedCategories([]);
     setProductImages([]);
     setSelectedRolePermissions([]);
+    setRolePermOpen(false);
+    setRolePermQuery('');
   };
 
   const openCreate = () => {
@@ -381,6 +385,8 @@ export default function CrudPage({ resource, permissions = [], authType }) {
       const assigned = permissionIdMap[row.id] || [];
       setSelectedRolePermissions(assigned.map((id) => String(id)));
     }
+    setRolePermOpen(false);
+    setRolePermQuery('');
     setOpen(true);
   };
 
@@ -667,6 +673,16 @@ export default function CrudPage({ resource, permissions = [], authType }) {
   const removeProductImage = (index) => {
     setProductImages((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
   };
+
+  const filteredRolePermissionOptions = useMemo(() => {
+    if (!rolePermQuery) {
+      return rolePermissionOptions;
+    }
+    const search = rolePermQuery.toLowerCase();
+    return rolePermissionOptions.filter((option) =>
+      String(option.label).toLowerCase().includes(search)
+    );
+  }, [rolePermissionOptions, rolePermQuery]);
 
   const statusPills = Object.entries(stats.statusCounts || {}).slice(0, 3);
 
@@ -1158,21 +1174,53 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                 {rolePermissionOptions.length === 0 ? (
                   <p className="mt-3 text-sm text-[var(--muted-ink)]">No permissions available.</p>
                 ) : (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {rolePermissionOptions.map((option) => {
-                      const value = String(option.value);
-                      return (
-                        <label key={value} className="flex items-center gap-2 text-sm text-[var(--ink)]">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
-                            checked={selectedRolePermissions.includes(value)}
-                            onChange={() => toggleRolePermission(value)}
+                  <div className="mt-3 grid gap-3">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--ink)] shadow-sm"
+                        onClick={() => setRolePermOpen((prev) => !prev)}
+                      >
+                        <span>
+                          {selectedRolePermissions.length > 0
+                            ? `${selectedRolePermissions.length} selected`
+                            : 'Select permissions'}
+                        </span>
+                        <span className="text-xs text-[var(--muted-ink)]">{rolePermOpen ? 'Hide' : 'Show'}</span>
+                      </button>
+                      {rolePermOpen && (
+                        <div className="absolute z-20 mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-lg">
+                          <Input
+                            type="text"
+                            placeholder="Search permissions..."
+                            value={rolePermQuery}
+                            onChange={(event) => setRolePermQuery(event.target.value)}
                           />
-                          {option.label}
-                        </label>
-                      );
-                    })}
+                          <div className="mt-3 max-h-52 overflow-y-auto pr-1">
+                            {filteredRolePermissionOptions.length === 0 ? (
+                              <p className="text-sm text-[var(--muted-ink)]">No matches.</p>
+                            ) : (
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {filteredRolePermissionOptions.map((option) => {
+                                  const value = String(option.value);
+                                  return (
+                                    <label key={value} className="flex items-center gap-2 text-sm text-[var(--ink)]">
+                                      <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                                        checked={selectedRolePermissions.includes(value)}
+                                        onChange={() => toggleRolePermission(value)}
+                                      />
+                                      {option.label}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {selectedRolePermissions.length > 0 && (
