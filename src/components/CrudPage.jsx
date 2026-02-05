@@ -144,9 +144,15 @@ export default function CrudPage({ resource, permissions = [], authType }) {
   const [showPasswords, setShowPasswords] = useState({});
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [productCategoryMap, setProductCategoryMap] = useState({});
+  const [productImageMap, setProductImageMap] = useState({});
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [productImages, setProductImages] = useState([]);
 
   const fields = useMemo(() => resource.fields, [resource.fields]);
   const roleConfig = roleInfoConfig[resource.key];
+  const isProduct = resource.key === 'products';
   const avatarUploadEndpoint = useMemo(() => {
     if (resource.key === 'platform-admins') {
       return '/platform-admins';
@@ -161,8 +167,52 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     try {
       setLoading(true);
       setError('');
-      const data = await api.list(resource.key);
-      setRows(Array.isArray(data) ? data : []);
+      if (resource.key === 'products') {
+        const [products, categories, productCategories, productImageItems] = await Promise.all([
+          api.list('products'),
+          api.list('categories'),
+          api.list('product-categories'),
+          api.list('product-images')
+        ]);
+        setRows(Array.isArray(products) ? products : []);
+        const categoryItems = Array.isArray(categories) ? categories : [];
+        setCategoryOptions(
+          categoryItems.map((item) => ({
+            value: String(item.id),
+            label: item.name || item.slug || `#${item.id}`
+          }))
+        );
+        const categoryMap = {};
+        (Array.isArray(productCategories) ? productCategories : []).forEach((item) => {
+          const productId = item.product_id;
+          if (!productId) {
+            return;
+          }
+          if (!categoryMap[productId]) {
+            categoryMap[productId] = [];
+          }
+          categoryMap[productId].push(item);
+        });
+        setProductCategoryMap(categoryMap);
+        const imageMap = {};
+        (Array.isArray(productImageItems) ? productImageItems : []).forEach((item) => {
+          const productId = item.product_id;
+          if (!productId) {
+            return;
+          }
+          if (!imageMap[productId]) {
+            imageMap[productId] = [];
+          }
+          imageMap[productId].push(item);
+        });
+        setProductImageMap(imageMap);
+      } else {
+        const data = await api.list(resource.key);
+        setRows(Array.isArray(data) ? data : []);
+        setCategoryOptions([]);
+        setProductCategoryMap({});
+        setProductImageMap({});
+      }
     } catch (err) {
       setError(err.message || 'Failed to load data');
     } finally {
@@ -260,6 +310,8 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     setForm(initial);
     setFieldErrors({});
     setError('');
+    setSelectedCategories([]);
+    setProductImages([]);
   };
 
   const openCreate = () => {
@@ -284,6 +336,17 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     setForm(next);
     setFieldErrors({});
     setError('');
+    if (isProduct) {
+      const categoryLinks = productCategoryMap[row.id] || [];
+      const categoryIds = categoryLinks.map((link) => String(link.category_id));
+      setSelectedCategories(categoryIds);
+      const images = productImageMap[row.id] || [];
+      setProductImages(
+        images.map((image) => ({
+          url: image.url ? String(image.url) : ''
+        }))
+      );
+    }
     setOpen(true);
   };
 
@@ -355,10 +418,58 @@ export default function CrudPage({ resource, permissions = [], authType }) {
         payload[field.key] = value;
       });
 
+      let productId = editRow?.id || null;
       if (editRow) {
         await api.update(resource.key, editRow.id, payload);
       } else {
-        await api.create(resource.key, payload);
+        const created = await api.create(resource.key, payload);
+        productId = created?.id || null;
+        if (!productId && resource.key === 'products') {
+          const products = await api.list('products');
+          const items = Array.isArray(products) ? products : [];
+          const match =
+            items.find((item) => item.slug === payload.slug && item.name === payload.name) ||
+            items.find((item) => item.slug === payload.slug);
+          productId = match?.id || null;
+        }
+      }
+
+      if (resource.key === 'products') {
+        if (!productId) {
+          setError('Product saved but could not sync categories or images.');
+          return;
+        }
+        const existingCategoryLinks = productCategoryMap[productId] || [];
+        await Promise.all(
+          existingCategoryLinks.map((link) => api.remove('product-categories', link.id))
+        );
+        const categoryIds = selectedCategories
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
+        await Promise.all(
+          categoryIds.map((categoryId) =>
+            api.create('product-categories', {
+              product_id: productId,
+              category_id: categoryId,
+              is_active: true
+            })
+          )
+        );
+        const imageUrls = productImages
+          .map((image) => (image?.url ? String(image.url).trim() : ''))
+          .filter(Boolean);
+        const existingImages = productImageMap[productId] || [];
+        await Promise.all(existingImages.map((image) => api.remove('product-images', image.id)));
+        await Promise.all(
+          imageUrls.map((url, index) =>
+            api.create('product-images', {
+              product_id: productId,
+              url,
+              sort_order: index + 1,
+              is_active: true
+            })
+          )
+        );
       }
       setOpen(false);
       await load();
@@ -440,6 +551,50 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     setInfoRole(row);
     setInfoPermissions(permissionMap[row.id] || []);
     setInfoOpen(true);
+  };
+
+  const categoryLabelMap = useMemo(() => {
+    const map = {};
+    categoryOptions.forEach((option) => {
+      map[String(option.value)] = option.label;
+    });
+    return map;
+  }, [categoryOptions]);
+
+  const branchLabelMap = useMemo(() => {
+    const options = refOptions.branch_id || [];
+    const map = {};
+    options.forEach((option) => {
+      const value = option.value ?? option;
+      const label = option.label ?? option;
+      map[String(value)] = label;
+    });
+    return map;
+  }, [refOptions]);
+
+  const toggleCategory = (categoryId) => {
+    setSelectedCategories((prev) => {
+      if (prev.includes(categoryId)) {
+        return prev.filter((item) => item !== categoryId);
+      }
+      return [...prev, categoryId];
+    });
+  };
+
+  const addProductImage = () => {
+    setProductImages((prev) => [...prev, { url: '' }]);
+  };
+
+  const updateProductImage = (index, value) => {
+    setProductImages((prev) =>
+      prev.map((image, currentIndex) =>
+        currentIndex === index ? { ...image, url: value } : image
+      )
+    );
+  };
+
+  const removeProductImage = (index) => {
+    setProductImages((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
   };
 
   const statusPills = Object.entries(stats.statusCounts || {}).slice(0, 3);
@@ -566,118 +721,234 @@ export default function CrudPage({ resource, permissions = [], authType }) {
 
       <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[32px]">
         <div className="no-scrollbar h-full min-h-0 overflow-auto">
-          <Table className="responsive-table w-full">
-          <TableHeader className="sticky top-0 z-10 bg-black text-white">
-            <TableRow className="bg-black hover:bg-black">
-              <TableHead className="text-white w-[240px] max-w-none sm:w-[300px]">
-                Profile
-              </TableHead>
-              {tableHeaders.map((header) => (
-                <TableHead key={header} className="text-white">
-                  {header}
-                </TableHead>
-              ))}
-              <TableHead className="text-white">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={headers.length + 2}>Loading...</TableCell>
-              </TableRow>
-            ) : filteredRows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={headers.length + 2}>No data</TableCell>
-              </TableRow>
-            ) : (
-              filteredRows.map((row) => {
-                const statusValue = row.status ? String(row.status).toLowerCase() : '';
-                const statusClass =
-                  statusValue === 'active'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : statusValue === 'pending'
-                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                    : statusValue === 'suspended'
-                    ? 'bg-red-50 text-red-700 border-red-200'
-                    : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
-                const primaryField = fields.find((field) => field.key === 'name')?.key
-                  || fields.find((field) => field.key === 'email')?.key
-                  || fields[0]?.key;
-                const avatarText = primaryField ? formatValue(row[primaryField]) : `Record ${row.id}`;
-                const avatarUrl = row.avatar_url ? String(row.avatar_url) : '';
+          {isProduct ? (
+            <div className="grid gap-4 p-4 sm:p-6">
+              {loading ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Loading...
+                </div>
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  No products found.
+                </div>
+              ) : (
+                filteredRows.map((row) => {
+                  const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                  const statusClass =
+                    statusValue === 'active'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : statusValue === 'pending'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : statusValue === 'suspended'
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+                  const categories = (productCategoryMap[row.id] || []).map((link) => {
+                    const key = link.category_id ? String(link.category_id) : '';
+                    return categoryLabelMap[key] || `#${link.category_id}`;
+                  });
+                  const images = productImageMap[row.id] || [];
+                  const coverUrl = images[0]?.url ? String(images[0].url) : '';
+                  const branchLabel =
+                    row.branch_id !== undefined
+                      ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
+                      : 'Unassigned';
 
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell
-                      data-label="Profile"
-                      className="w-[240px] max-w-none sm:w-[300px] whitespace-normal break-words"
+                  return (
+                    <div
+                      key={row.id}
+                      className="flex flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
-                          {avatarUrl ? (
-                            <img
-                              src={avatarUrl}
-                              alt={avatarText}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            getInitials(avatarText)
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[var(--accent-soft)]">
+                            {coverUrl ? (
+                              <img
+                                src={coverUrl}
+                                alt={row.name || `Product ${row.id}`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[var(--accent-strong)]">
+                                {getInitials(row.name)}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-lg font-semibold text-[var(--ink)]">
+                              {row.name || `Product #${row.id}`}
+                            </div>
+                            <div className="text-xs text-[var(--muted-ink)]">Slug: {row.slug || '-'}</div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                              <Badge className={`border ${statusClass}`}>
+                                {formatValue(row.status)}
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                {row.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                MOQ: {row.moq ?? '-'}
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                Branch: {branchLabel}
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                Images: {images.length}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(isMerchant ||
+                            !resource.permissions?.update ||
+                            permissions.includes(resource.permissions.update)) && (
+                            <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
+                              Edit
+                            </Button>
+                          )}
+                          {(isMerchant ||
+                            !resource.permissions?.delete ||
+                            permissions.includes(resource.permissions.delete)) && (
+                            <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
+                              Delete
+                            </Button>
                           )}
                         </div>
-                        <div className="cell-clamp">
-                          <div className="font-medium text-[var(--ink)]">
-                            {avatarText}
-                          </div>
-                          <div className="text-xs text-[var(--muted-ink)]">
-                            ID #{row.id}
-                          </div>
-                        </div>
                       </div>
-                    </TableCell>
-                    {tableHeaders.map((header) => (
-                      <TableCell key={`${row.id}-${header}`} data-label={header}>
-                        {header === 'permission_count' ? (
-                          <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                            {permissionCount(row.id)}
-                          </Badge>
-                        ) : header === 'status' ? (
-                          <Badge className={`border ${statusClass}`}>
-                            {formatValue(row[header])}
+                      <div className="text-sm text-[var(--muted-ink)]">
+                        {row.description || 'No description provided.'}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {categories.length === 0 ? (
+                          <Badge className="border border-dashed border-[var(--border)] bg-transparent">
+                            No categories
                           </Badge>
                         ) : (
-                          <span className="cell-clamp">{formatValue(row[header])}</span>
-                        )}
-                      </TableCell>
-                    ))}
-                    <TableCell data-label="Actions">
-                      <div className="flex flex-wrap gap-2">
-                        {roleConfig && (
-                          <Button size="sm" variant="outline" onClick={() => openInfo(row)}>
-                            Info
-                          </Button>
-                        )}
-                        {(isMerchant ||
-                          !resource.permissions?.update ||
-                          permissions.includes(resource.permissions.update)) && (
-                          <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                            Edit
-                          </Button>
-                        )}
-                        {(isMerchant ||
-                          !resource.permissions?.delete ||
-                          permissions.includes(resource.permissions.delete)) && (
-                          <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
-                            Delete
-                          </Button>
+                          categories.map((label) => (
+                            <Badge key={`${row.id}-${label}`} className="border border-[var(--border)] bg-[var(--surface)]">
+                              {label}
+                            </Badge>
+                          ))
                         )}
                       </div>
-                    </TableCell>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          ) : (
+            <Table className="responsive-table w-full">
+              <TableHeader className="sticky top-0 z-10 bg-black text-white">
+                <TableRow className="bg-black hover:bg-black">
+                  <TableHead className="text-white w-[240px] max-w-none sm:w-[300px]">
+                    Profile
+                  </TableHead>
+                  {tableHeaders.map((header) => (
+                    <TableHead key={header} className="text-white">
+                      {header}
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-white">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={headers.length + 2}>Loading...</TableCell>
                   </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-          </Table>
+                ) : filteredRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={headers.length + 2}>No data</TableCell>
+                  </TableRow>
+                ) : (
+                  filteredRows.map((row) => {
+                    const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                    const statusClass =
+                      statusValue === 'active'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : statusValue === 'pending'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : statusValue === 'suspended'
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+                    const primaryField = fields.find((field) => field.key === 'name')?.key
+                      || fields.find((field) => field.key === 'email')?.key
+                      || fields[0]?.key;
+                    const avatarText = primaryField ? formatValue(row[primaryField]) : `Record ${row.id}`;
+                    const avatarUrl = row.avatar_url ? String(row.avatar_url) : '';
+
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell
+                          data-label="Profile"
+                          className="w-[240px] max-w-none sm:w-[300px] whitespace-normal break-words"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
+                              {avatarUrl ? (
+                                <img
+                                  src={avatarUrl}
+                                  alt={avatarText}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                getInitials(avatarText)
+                              )}
+                            </div>
+                            <div className="cell-clamp">
+                              <div className="font-medium text-[var(--ink)]">
+                                {avatarText}
+                              </div>
+                              <div className="text-xs text-[var(--muted-ink)]">
+                                ID #{row.id}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        {tableHeaders.map((header) => (
+                          <TableCell key={`${row.id}-${header}`} data-label={header}>
+                            {header === 'permission_count' ? (
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                {permissionCount(row.id)}
+                              </Badge>
+                            ) : header === 'status' ? (
+                              <Badge className={`border ${statusClass}`}>
+                                {formatValue(row[header])}
+                              </Badge>
+                            ) : (
+                              <span className="cell-clamp">{formatValue(row[header])}</span>
+                            )}
+                          </TableCell>
+                        ))}
+                        <TableCell data-label="Actions">
+                          <div className="flex flex-wrap gap-2">
+                            {roleConfig && (
+                              <Button size="sm" variant="outline" onClick={() => openInfo(row)}>
+                                Info
+                              </Button>
+                            )}
+                            {(isMerchant ||
+                              !resource.permissions?.update ||
+                              permissions.includes(resource.permissions.update)) && (
+                              <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
+                                Edit
+                              </Button>
+                            )}
+                            {(isMerchant ||
+                              !resource.permissions?.delete ||
+                              permissions.includes(resource.permissions.delete)) && (
+                              <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
+                                Delete
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
 
@@ -808,6 +1079,82 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                 </label>
               );
             })}
+            {isProduct && (
+              <>
+                <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
+                    Categories
+                  </p>
+                  {categoryOptions.length === 0 ? (
+                    <p className="mt-3 text-sm text-[var(--muted-ink)]">No categories available.</p>
+                  ) : (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {categoryOptions.map((option) => {
+                        const value = String(option.value);
+                        return (
+                          <label key={value} className="flex items-center gap-2 text-sm text-[var(--ink)]">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                              checked={selectedCategories.includes(value)}
+                              onChange={() => toggleCategory(value)}
+                            />
+                            {option.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {selectedCategories.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedCategories.map((value) => (
+                        <Badge
+                          key={value}
+                          className="border border-[var(--border)] bg-[var(--surface)]"
+                        >
+                          {categoryLabelMap[value] || value}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
+                      Images
+                    </p>
+                    <Button type="button" size="sm" variant="secondary" onClick={addProductImage}>
+                      Add Image
+                    </Button>
+                  </div>
+                  {productImages.length === 0 ? (
+                    <p className="mt-3 text-sm text-[var(--muted-ink)]">No images added yet.</p>
+                  ) : (
+                    <div className="mt-3 grid gap-3">
+                      {productImages.map((image, index) => (
+                        <div key={`image-${index}`} className="flex flex-wrap items-center gap-2">
+                          <Input
+                            type="text"
+                            value={image?.url ?? ''}
+                            onChange={(event) => updateProductImage(index, event.target.value)}
+                            placeholder="https://..."
+                            className="min-w-[220px] flex-1"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => removeProductImage(index)}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setOpen(false)}>
