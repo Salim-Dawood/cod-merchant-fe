@@ -154,7 +154,9 @@ export default function CrudPage({ resource, permissions = [], authType }) {
   const [productCategoryMap, setProductCategoryMap] = useState({});
   const [productImageMap, setProductImageMap] = useState({});
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [productImages, setProductImages] = useState([]);
+  const [productFiles, setProductFiles] = useState([]);
+  const [removedImageIds, setRemovedImageIds] = useState([]);
+  const productImageInputRef = useRef(null);
 
   const fields = useMemo(() => resource.fields, [resource.fields]);
   const roleConfig = roleInfoConfig[resource.key];
@@ -342,7 +344,8 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     setFieldErrors({});
     setError('');
     setSelectedCategories([]);
-    setProductImages([]);
+    setProductFiles([]);
+    setRemovedImageIds([]);
     setSelectedRolePermissions([]);
     setRolePermOpen(false);
     setRolePermQuery('');
@@ -374,12 +377,8 @@ export default function CrudPage({ resource, permissions = [], authType }) {
       const categoryLinks = productCategoryMap[row.id] || [];
       const categoryIds = categoryLinks.map((link) => String(link.category_id));
       setSelectedCategories(categoryIds);
-      const images = productImageMap[row.id] || [];
-      setProductImages(
-        images.map((image) => ({
-          url: image.url ? String(image.url) : ''
-        }))
-      );
+      setProductFiles([]);
+      setRemovedImageIds([]);
     }
     if (roleConfig) {
       const assigned = permissionIdMap[row.id] || [];
@@ -495,21 +494,35 @@ export default function CrudPage({ resource, permissions = [], authType }) {
             })
           )
         );
-        const imageUrls = productImages
-          .map((image) => (image?.url ? String(image.url).trim() : ''))
-          .filter(Boolean);
         const existingImages = productImageMap[productId] || [];
-        await Promise.all(existingImages.map((image) => api.remove('product-images', image.id)));
-        await Promise.all(
-          imageUrls.map((url, index) =>
-            api.create('product-images', {
-              product_id: productId,
-              url,
-              sort_order: index + 1,
-              is_active: true
+        const toRemove = existingImages.filter((image) => removedImageIds.includes(image.id));
+        if (toRemove.length > 0) {
+          await Promise.all(toRemove.map((image) => api.remove('product-images', image.id)));
+        }
+        if (productFiles.length > 0) {
+          const token = getAccessToken();
+          await Promise.all(
+            productFiles.map((entry, index) => {
+              const formData = new FormData();
+              formData.append('photo', entry.file);
+              formData.append('product_id', String(productId));
+              formData.append('sort_order', String(existingImages.length + index + 1));
+              formData.append('is_active', 'true');
+              return fetch(`${API_BASE_URL}/product-images/upload`, {
+                method: 'POST',
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                credentials: 'include',
+                body: formData
+              }).then(async (response) => {
+                if (!response.ok) {
+                  const text = await response.text();
+                  throw new Error(text || 'Failed to upload image');
+                }
+                return response.json().catch(() => null);
+              });
             })
-          )
-        );
+          );
+        }
       }
       if (roleConfig) {
         let roleId = editRow?.id || null;
@@ -640,6 +653,11 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     return map;
   }, [refOptions]);
 
+  const existingProductImages = useMemo(
+    () => (editRow && editRow.id ? productImageMap[editRow.id] || [] : []),
+    [editRow, productImageMap]
+  );
+
   const toggleCategory = (categoryId) => {
     setSelectedCategories((prev) => {
       if (prev.includes(categoryId)) {
@@ -659,19 +677,34 @@ export default function CrudPage({ resource, permissions = [], authType }) {
   };
 
   const addProductImage = () => {
-    setProductImages((prev) => [...prev, { url: '' }]);
+    productImageInputRef.current?.click();
   };
 
-  const updateProductImage = (index, value) => {
-    setProductImages((prev) =>
-      prev.map((image, currentIndex) =>
-        currentIndex === index ? { ...image, url: value } : image
-      )
-    );
+  const handleProductImageFiles = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) {
+      return;
+    }
+    const nextFiles = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      name: file.name
+    }));
+    setProductFiles((prev) => [...prev, ...nextFiles]);
+    event.target.value = '';
   };
 
-  const removeProductImage = (index) => {
-    setProductImages((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
+  const removeProductFile = (index) => {
+    setProductFiles((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
+  };
+
+  const toggleRemoveExistingImage = (imageId) => {
+    setRemovedImageIds((prev) => {
+      if (prev.includes(imageId)) {
+        return prev.filter((item) => item !== imageId);
+      }
+      return [...prev, imageId];
+    });
   };
 
   const filteredRolePermissionOptions = useMemo(() => {
@@ -1288,29 +1321,76 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                       Add Image
                     </Button>
                   </div>
-                  {productImages.length === 0 ? (
+                  <input
+                    ref={productImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleProductImageFiles}
+                  />
+                  {existingProductImages.length === 0 && productFiles.length === 0 ? (
                     <p className="mt-3 text-sm text-[var(--muted-ink)]">No images added yet.</p>
                   ) : (
                     <div className="mt-3 grid gap-3">
-                      {productImages.map((image, index) => (
-                        <div key={`image-${index}`} className="flex flex-wrap items-center gap-2">
-                          <Input
-                            type="text"
-                            value={image?.url ?? ''}
-                            onChange={(event) => updateProductImage(index, event.target.value)}
-                            placeholder="https://..."
-                            className="min-w-[220px] flex-1"
-                          />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => removeProductImage(index)}
-                          >
-                            Remove
-                          </Button>
+                      {existingProductImages.length > 0 && (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {existingProductImages.map((image) => {
+                            const isRemoved = removedImageIds.includes(image.id);
+                            return (
+                              <div
+                                key={`existing-${image.id}`}
+                                className={`flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 ${isRemoved ? 'opacity-50' : ''}`}
+                              >
+                                <div className="h-12 w-12 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]">
+                                  {image.url ? (
+                                    <img src={image.url} alt="Product" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="h-full w-full" />
+                                  )}
+                                </div>
+                                <div className="flex-1 text-xs text-[var(--muted-ink)]">
+                                  Existing image #{image.id}
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={isRemoved ? 'secondary' : 'destructive'}
+                                  onClick={() => toggleRemoveExistingImage(image.id)}
+                                >
+                                  {isRemoved ? 'Undo' : 'Remove'}
+                                </Button>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
+                      )}
+                      {productFiles.length > 0 && (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {productFiles.map((entry, index) => (
+                            <div key={`new-${index}`} className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2">
+                              <div className="h-12 w-12 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]">
+                                {entry.preview ? (
+                                  <img src={entry.preview} alt={entry.name} className="h-full w-full object-cover" />
+                                ) : (
+                                  <div className="h-full w-full" />
+                                )}
+                              </div>
+                              <div className="flex-1 text-xs text-[var(--muted-ink)]">
+                                {entry.name || 'New image'}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => removeProductFile(index)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
