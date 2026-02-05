@@ -7,9 +7,7 @@ const sections = [
     title: 'Platform',
     links: [
       { label: 'Admins', to: '/platform/platform-admins', permission: 'view-platform-admin', icon: 'users' },
-      { label: 'Roles', to: '/platform/platform-roles', permission: 'view-platform-role', icon: 'shield' },
-      { label: 'Permissions', to: '/platform/platform-permissions', permission: 'view-platform-permission', icon: 'key' },
-      { label: 'Role Permissions', to: '/platform/platform-role-permissions', permission: 'view-platform-role-permission', icon: 'list' }
+      { label: 'Roles', to: '/platform/platform-roles', permission: 'view-platform-role', icon: 'shield' }
     ]
   },
   {

@@ -136,6 +136,10 @@ export default function CrudPage({ resource, permissions = [], authType }) {
   const [query, setQuery] = useState('');
   const [refOptions, setRefOptions] = useState({});
   const [permissionMap, setPermissionMap] = useState({});
+  const [permissionIdMap, setPermissionIdMap] = useState({});
+  const [permissionLinkMap, setPermissionLinkMap] = useState({});
+  const [rolePermissionOptions, setRolePermissionOptions] = useState([]);
+  const [selectedRolePermissions, setSelectedRolePermissions] = useState([]);
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoRole, setInfoRole] = useState(null);
   const [infoPermissions, setInfoPermissions] = useState([]);
@@ -266,6 +270,9 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     const loadPermissions = async () => {
       if (!roleConfig) {
         setPermissionMap({});
+        setPermissionIdMap({});
+        setPermissionLinkMap({});
+        setRolePermissionOptions([]);
         return;
       }
 
@@ -274,13 +281,16 @@ export default function CrudPage({ resource, permissions = [], authType }) {
           api.list(roleConfig.linkResource),
           api.list(roleConfig.permissionResource)
         ]);
+        const permissionItems = Array.isArray(permissions) ? permissions : [];
         const permissionIndex = new Map(
-          (Array.isArray(permissions) ? permissions : []).map((item) => [
+          permissionItems.map((item) => [
             item.id,
             item[roleConfig.permissionLabel] || item.name || item.key_name || `#${item.id}`
           ])
         );
         const map = {};
+        const idMap = {};
+        const linkMap = {};
         (Array.isArray(links) ? links : []).forEach((link) => {
           const roleId = link[roleConfig.roleKey];
           const permissionId = link[roleConfig.permissionKey];
@@ -290,12 +300,31 @@ export default function CrudPage({ resource, permissions = [], authType }) {
           if (!map[roleId]) {
             map[roleId] = [];
           }
+          if (!idMap[roleId]) {
+            idMap[roleId] = [];
+          }
+          if (!linkMap[roleId]) {
+            linkMap[roleId] = [];
+          }
           const label = permissionIndex.get(permissionId) || `#${permissionId}`;
           map[roleId].push(label);
+          idMap[roleId].push(permissionId);
+          linkMap[roleId].push(link);
         });
         setPermissionMap(map);
+        setPermissionIdMap(idMap);
+        setPermissionLinkMap(linkMap);
+        setRolePermissionOptions(
+          permissionItems.map((item) => ({
+            value: String(item.id),
+            label: permissionIndex.get(item.id) || `#${item.id}`
+          }))
+        );
       } catch {
         setPermissionMap({});
+        setPermissionIdMap({});
+        setPermissionLinkMap({});
+        setRolePermissionOptions([]);
       }
     };
 
@@ -312,6 +341,7 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     setError('');
     setSelectedCategories([]);
     setProductImages([]);
+    setSelectedRolePermissions([]);
   };
 
   const openCreate = () => {
@@ -346,6 +376,10 @@ export default function CrudPage({ resource, permissions = [], authType }) {
           url: image.url ? String(image.url) : ''
         }))
       );
+    }
+    if (roleConfig) {
+      const assigned = permissionIdMap[row.id] || [];
+      setSelectedRolePermissions(assigned.map((id) => String(id)));
     }
     setOpen(true);
   };
@@ -471,6 +505,34 @@ export default function CrudPage({ resource, permissions = [], authType }) {
           )
         );
       }
+      if (roleConfig) {
+        let roleId = editRow?.id || null;
+        if (!roleId) {
+          const createdRole = await api.list(resource.key);
+          const items = Array.isArray(createdRole) ? createdRole : [];
+          const match = items.find((item) => item.name === payload.name);
+          roleId = match?.id || null;
+        }
+        if (!roleId) {
+          setError('Role saved but could not sync permissions.');
+          return;
+        }
+        const existingLinks = permissionLinkMap[roleId] || [];
+        await Promise.all(
+          existingLinks.map((link) => api.remove(roleConfig.linkResource, link.id))
+        );
+        const permissionIds = selectedRolePermissions
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
+        await Promise.all(
+          permissionIds.map((permissionId) =>
+            api.create(roleConfig.linkResource, {
+              [roleConfig.roleKey]: roleId,
+              [roleConfig.permissionKey]: permissionId
+            })
+          )
+        );
+      }
       setOpen(false);
       await load();
     } catch (err) {
@@ -578,6 +640,15 @@ export default function CrudPage({ resource, permissions = [], authType }) {
         return prev.filter((item) => item !== categoryId);
       }
       return [...prev, categoryId];
+    });
+  };
+
+  const toggleRolePermission = (permissionId) => {
+    setSelectedRolePermissions((prev) => {
+      if (prev.includes(permissionId)) {
+        return prev.filter((item) => item !== permissionId);
+      }
+      return [...prev, permissionId];
     });
   };
 
@@ -1079,6 +1150,48 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                 </label>
               );
             })}
+            {roleConfig && (
+              <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
+                  Permissions
+                </p>
+                {rolePermissionOptions.length === 0 ? (
+                  <p className="mt-3 text-sm text-[var(--muted-ink)]">No permissions available.</p>
+                ) : (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {rolePermissionOptions.map((option) => {
+                      const value = String(option.value);
+                      return (
+                        <label key={value} className="flex items-center gap-2 text-sm text-[var(--ink)]">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                            checked={selectedRolePermissions.includes(value)}
+                            onChange={() => toggleRolePermission(value)}
+                          />
+                          {option.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {selectedRolePermissions.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedRolePermissions.map((value) => {
+                      const label = rolePermissionOptions.find((opt) => String(opt.value) === String(value))?.label || value;
+                      return (
+                        <Badge
+                          key={value}
+                          className="border border-[var(--border)] bg-[var(--surface)]"
+                        >
+                          {label}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             {isProduct && (
               <>
                 <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">

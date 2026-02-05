@@ -43,49 +43,6 @@ const resources = {
         { key: 'description', label: 'Description', type: 'text' },
         { key: 'is_system', label: 'System Role', type: 'boolean' }
       ]
-    },
-    {
-      key: 'platform-permissions',
-      title: 'Platform Permissions',
-      permissions: {
-        read: 'view-platform-permission',
-        create: 'create-platform-permission',
-        update: 'update-platform-permission',
-        delete: 'delete-platform-permission'
-      },
-      fields: [
-        { key: 'key_name', label: 'Key', type: 'text', required: true },
-        { key: 'description', label: 'Description', type: 'text' },
-        { key: 'group_name', label: 'Group', type: 'text' }
-      ]
-    },
-    {
-      key: 'platform-role-permissions',
-      title: 'Platform Role Permissions',
-      permissions: {
-        read: 'view-platform-role-permission',
-        create: 'create-platform-role-permission',
-        update: 'update-platform-role-permission',
-        delete: 'delete-platform-role-permission'
-      },
-      fields: [
-        {
-          key: 'platform_role_id',
-          label: 'Role',
-          type: 'select',
-          ref: 'platform-roles',
-          refLabel: 'name',
-          required: true
-        },
-        {
-          key: 'platform_permission_id',
-          label: 'Permission',
-          type: 'select',
-          ref: 'platform-permissions',
-          refLabel: 'key_name',
-          required: true
-        }
-      ]
     }
   ],
   merchant: [
