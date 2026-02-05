@@ -188,34 +188,6 @@ const resources = {
       ]
     },
     {
-      key: 'branch-role-permissions',
-      title: 'Branch Role Permissions',
-      permissions: {
-        read: 'view-branch-role-permission',
-        create: 'create-branch-role-permission',
-        update: 'update-branch-role-permission',
-        delete: 'delete-branch-role-permission'
-      },
-      fields: [
-        {
-          key: 'branch_role_id',
-          label: 'Role',
-          type: 'select',
-          ref: 'branch-roles',
-          refLabel: 'name',
-          required: true
-        },
-        {
-          key: 'permission_id',
-          label: 'Permission',
-          type: 'select',
-          ref: 'permissions',
-          refLabel: 'key_name',
-          required: true
-        }
-      ]
-    },
-    {
       key: 'products',
       title: 'Products',
       permissions: {
@@ -267,58 +239,6 @@ const resources = {
         { key: 'created_at', label: 'Created At', type: 'text', readOnly: true },
         { key: 'updated_by', label: 'Updated By', type: 'number', readOnly: true },
         { key: 'updated_at', label: 'Updated At', type: 'text', readOnly: true }
-      ]
-    },
-    {
-      key: 'product-images',
-      title: 'Product Images',
-      permissions: {
-        read: 'view-product-image',
-        create: 'create-product-image',
-        update: 'update-product-image',
-        delete: 'delete-product-image'
-      },
-      fields: [
-        {
-          key: 'product_id',
-          label: 'Product',
-          type: 'select',
-          ref: 'products',
-          refLabel: 'name',
-          required: true
-        },
-        { key: 'url', label: 'Image URL', type: 'text', required: true },
-        { key: 'sort_order', label: 'Sort Order', type: 'number' },
-        { key: 'is_active', label: 'Active', type: 'boolean' }
-      ]
-    },
-    {
-      key: 'product-categories',
-      title: 'Product Categories',
-      permissions: {
-        read: 'view-product-category',
-        create: 'create-product-category',
-        update: 'update-product-category',
-        delete: 'delete-product-category'
-      },
-      fields: [
-        {
-          key: 'product_id',
-          label: 'Product',
-          type: 'select',
-          ref: 'products',
-          refLabel: 'name',
-          required: true
-        },
-        {
-          key: 'category_id',
-          label: 'Category',
-          type: 'select',
-          ref: 'categories',
-          refLabel: 'name',
-          required: true
-        },
-        { key: 'is_active', label: 'Active', type: 'boolean' }
       ]
     }
   ]
