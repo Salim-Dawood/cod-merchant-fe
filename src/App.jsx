@@ -41,16 +41,12 @@ export default function App() {
         auth
           .refreshMerchant()
           .then(() => auth.meMerchant())
-          .then(() => {
-            if (isMounted) {
-              setAuthed(true);
-              setAuthType('merchant');
-              setPermissions([]);
-              return auth.meMerchant();
-            }
-          })
+          .then(() => auth.meMerchant())
           .then((merchantProfile) => {
             if (isMounted && merchantProfile) {
+              setAuthed(true);
+              setAuthType('merchant');
+              setPermissions(merchantProfile.permissions || []);
               setProfile(merchantProfile);
             }
           })
@@ -83,7 +79,7 @@ export default function App() {
       const merchantProfile = await auth.meMerchant();
       setAuthed(true);
       setAuthType('merchant');
-      setPermissions([]);
+      setPermissions(merchantProfile.permissions || []);
       setProfile(merchantProfile);
       return;
     }
@@ -111,13 +107,19 @@ export default function App() {
 
   const allowedRoutes = useMemo(() => {
     if (authType === 'merchant') {
+      const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
+      if (roleName === 'client') {
+        return routes.filter((route) =>
+          ['/merchant/merchants', '/merchant/products', '/merchant/categories'].includes(route.path)
+        );
+      }
       return routes.filter((route) => route.path.startsWith('/merchant/'));
     }
     return routes.filter((route) => {
       const perm = route.resource.permissions?.read;
       return !perm || permissions.includes(perm);
     });
-  }, [permissions, authType]);
+  }, [permissions, authType, profile]);
 
   const defaultPath = allowedRoutes[0]?.path || routes[0]?.path || '/login';
 
@@ -150,7 +152,7 @@ export default function App() {
           <Route
             key={route.path}
             path={route.path}
-            element={<CrudPage resource={route.resource} permissions={permissions} authType={authType} />}
+            element={<CrudPage resource={route.resource} permissions={permissions} authType={authType} profile={profile} />}
           />
         ))}
       </Route>

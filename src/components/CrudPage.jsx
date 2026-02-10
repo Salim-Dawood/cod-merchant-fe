@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api, API_BASE_URL } from '../lib/api';
 import { getAccessToken } from '../lib/session';
 import { Button } from './ui/button';
@@ -119,13 +120,16 @@ function normalizeServerValidation(data, fields) {
   return { errors, message };
 }
 
-export default function CrudPage({ resource, permissions = [], authType }) {
+export default function CrudPage({ resource, permissions = [], authType, profile }) {
   const isMerchant = authType === 'merchant';
+  const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
+  const isClient = isMerchant && roleName === 'client';
   const canRead = isMerchant
     ? true
     : resource.permissions?.read
     ? permissions.includes(resource.permissions.read)
     : true;
+  const canWrite = !isClient;
   const [rows, setRows] = useState([]);
   const [, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -157,6 +161,13 @@ export default function CrudPage({ resource, permissions = [], authType }) {
   const [productFiles, setProductFiles] = useState([]);
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const productImageInputRef = useRef(null);
+  const [merchantOptions, setMerchantOptions] = useState([]);
+  const [selectedMerchantId, setSelectedMerchantId] = useState('');
+  const [branchMerchantMap, setBranchMerchantMap] = useState({});
+  const [clientProducts, setClientProducts] = useState([]);
+  const [carouselIndex, setCarouselIndex] = useState({});
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const fields = useMemo(() => resource.fields, [resource.fields]);
   const roleConfig = roleInfoConfig[resource.key];
@@ -176,12 +187,23 @@ export default function CrudPage({ resource, permissions = [], authType }) {
       setLoading(true);
       setError('');
       if (resource.key === 'products') {
-        const [products, categories, productCategories, productImageItems] = await Promise.all([
+        const requests = [
           api.list('products'),
           api.list('categories'),
           api.list('product-categories'),
           api.list('product-images')
-        ]);
+        ];
+        if (isClient) {
+          requests.push(api.list('branches'), api.list('merchants'));
+        }
+        const [
+          products,
+          categories,
+          productCategories,
+          productImageItems,
+          branches = [],
+          merchants = []
+        ] = await Promise.all(requests);
         setRows(Array.isArray(products) ? products : []);
         const categoryItems = Array.isArray(categories) ? categories : [];
         setCategoryOptions(
@@ -214,19 +236,86 @@ export default function CrudPage({ resource, permissions = [], authType }) {
           imageMap[productId].push(item);
         });
         setProductImageMap(imageMap);
+        if (isClient) {
+          const branchMap = {};
+          (Array.isArray(branches) ? branches : []).forEach((branch) => {
+            if (branch?.id) {
+              branchMap[String(branch.id)] = branch.merchant_id;
+            }
+          });
+          setBranchMerchantMap(branchMap);
+          const merchantItems = Array.isArray(merchants) ? merchants : [];
+          setMerchantOptions(
+            merchantItems.map((merchant) => ({
+              value: String(merchant.id),
+              label: merchant.name || merchant.legal_name || `#${merchant.id}`
+            }))
+          );
+        } else {
+          setMerchantOptions([]);
+          setBranchMerchantMap({});
+        }
+      } else if (resource.key === 'categories' && isClient) {
+        const [categories, products, productCategories, branches, merchants] = await Promise.all([
+          api.list('categories'),
+          api.list('products'),
+          api.list('product-categories'),
+          api.list('branches'),
+          api.list('merchants')
+        ]);
+        setRows(Array.isArray(categories) ? categories : []);
+        setClientProducts(Array.isArray(products) ? products : []);
+        const categoryMap = {};
+        (Array.isArray(productCategories) ? productCategories : []).forEach((item) => {
+          const productId = item.product_id;
+          if (!productId) {
+            return;
+          }
+          if (!categoryMap[productId]) {
+            categoryMap[productId] = [];
+          }
+          categoryMap[productId].push(item);
+        });
+        setProductCategoryMap(categoryMap);
+        const branchMap = {};
+        (Array.isArray(branches) ? branches : []).forEach((branch) => {
+          if (branch?.id) {
+            branchMap[String(branch.id)] = branch.merchant_id;
+          }
+        });
+        setBranchMerchantMap(branchMap);
+        const merchantItems = Array.isArray(merchants) ? merchants : [];
+        setMerchantOptions(
+          merchantItems.map((merchant) => ({
+            value: String(merchant.id),
+            label: merchant.name || merchant.legal_name || `#${merchant.id}`
+          }))
+        );
       } else {
         const data = await api.list(resource.key);
         setRows(Array.isArray(data) ? data : []);
         setCategoryOptions([]);
         setProductCategoryMap({});
         setProductImageMap({});
+        setMerchantOptions([]);
+        setBranchMerchantMap({});
+        setClientProducts([]);
       }
     } catch (err) {
       setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [resource.key]);
+  }, [resource.key, isClient]);
+
+  useEffect(() => {
+    if (!isClient) {
+      return;
+    }
+    const params = new URLSearchParams(location.search);
+    const merchantId = params.get('merchant_id') || '';
+    setSelectedMerchantId(merchantId);
+  }, [location.search, isClient]);
 
   useEffect(() => {
     load();
@@ -612,11 +701,34 @@ export default function CrudPage({ resource, permissions = [], authType }) {
   }, [rows, statusKey]);
 
   const filteredRows = useMemo(() => {
+    let baseRows = rows;
+    if (isClient && selectedMerchantId) {
+      if (resource.key === 'products') {
+        baseRows = rows.filter((row) => {
+          const merchantId = branchMerchantMap[String(row.branch_id)];
+          return merchantId && String(merchantId) === String(selectedMerchantId);
+        });
+      } else if (resource.key === 'categories') {
+        const productIds = clientProducts
+          .filter((row) => {
+            const merchantId = branchMerchantMap[String(row.branch_id)];
+            return merchantId && String(merchantId) === String(selectedMerchantId);
+          })
+          .map((row) => row.id);
+        const allowedCategories = new Set(
+          Object.values(productCategoryMap)
+            .flat()
+            .filter((link) => productIds.includes(link.product_id))
+            .map((link) => String(link.category_id))
+        );
+        baseRows = rows.filter((row) => allowedCategories.has(String(row.id)));
+      }
+    }
     if (!query) {
-      return rows;
+      return baseRows;
     }
     const search = query.toLowerCase();
-    return rows.filter((row) =>
+    return baseRows.filter((row) =>
       tableHeaders.some((key) => {
         if (key === 'permission_count') {
           return String((permissionMap[row.id] || []).length).includes(search);
@@ -624,7 +736,7 @@ export default function CrudPage({ resource, permissions = [], authType }) {
         return String(row[key] ?? '').toLowerCase().includes(search);
       })
     );
-  }, [rows, query, tableHeaders, permissionMap]);
+  }, [rows, query, tableHeaders, permissionMap, isClient, selectedMerchantId, branchMerchantMap, resource.key, productCategoryMap, clientProducts]);
 
   const permissionCount = (roleId) => (permissionMap[roleId] || []).length;
 
@@ -717,6 +829,21 @@ export default function CrudPage({ resource, permissions = [], authType }) {
     );
   }, [rolePermissionOptions, rolePermQuery]);
 
+  const getCarouselIndex = (id, length) => {
+    const current = carouselIndex[id] ?? 0;
+    if (!length) {
+      return 0;
+    }
+    return current % length;
+  };
+
+  const setCarousel = (id, nextIndex) => {
+    setCarouselIndex((prev) => ({
+      ...prev,
+      [id]: nextIndex
+    }));
+  };
+
   const statusPills = Object.entries(stats.statusCounts || {}).slice(0, 3);
 
   const handleAvatarSelect = () => {
@@ -804,12 +931,14 @@ export default function CrudPage({ resource, permissions = [], authType }) {
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Highest ID</p>
               <p className="text-lg font-semibold">{stats.maxId || '-'}</p>
             </div>
-            {isMerchant || !resource.permissions?.create ? (
-              <Button onClick={openCreate}>New Record</Button>
-            ) : (
-              permissions.includes(resource.permissions.create) && (
+            {canWrite && (
+              (isMerchant || !resource.permissions?.create ? (
                 <Button onClick={openCreate}>New Record</Button>
-              )
+              ) : (
+                permissions.includes(resource.permissions.create) && (
+                  <Button onClick={openCreate}>New Record</Button>
+                )
+              ))
             )}
           </div>
         </div>
@@ -837,6 +966,33 @@ export default function CrudPage({ resource, permissions = [], authType }) {
             {loading ? 'Loading' : `${filteredRows.length} rows`}
           </Badge>
         </div>
+        {isClient && merchantOptions.length > 0 && ['products', 'categories'].includes(resource.key) && (
+          <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
+            <span>Merchant</span>
+            <select
+              className="h-10 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
+              value={selectedMerchantId}
+              onChange={(event) => {
+                const value = event.target.value;
+                setSelectedMerchantId(value);
+                const params = new URLSearchParams(location.search);
+                if (value) {
+                  params.set('merchant_id', value);
+                } else {
+                  params.delete('merchant_id');
+                }
+                navigate({ pathname: location.pathname, search: params.toString() });
+              }}
+            >
+              <option value="">All</option>
+              {merchantOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[32px]">
@@ -867,7 +1023,8 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                     return categoryLabelMap[key] || `#${link.category_id}`;
                   });
                   const images = productImageMap[row.id] || [];
-                  const coverUrl = images[0]?.url ? String(images[0].url) : '';
+                  const activeIndex = getCarouselIndex(row.id, images.length);
+                  const coverUrl = images[activeIndex]?.url ? String(images[activeIndex].url) : '';
                   const branchLabel =
                     row.branch_id !== undefined
                       ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
@@ -880,7 +1037,7 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div className="flex items-start gap-4">
-                          <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[var(--accent-soft)]">
+                          <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-[var(--accent-soft)]">
                             {coverUrl ? (
                               <img
                                 src={coverUrl}
@@ -891,6 +1048,24 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                               <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[var(--accent-strong)]">
                                 {getInitials(row.name)}
                               </div>
+                            )}
+                            {isClient && images.length > 1 && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-white/80 px-1 text-xs"
+                                  onClick={() => setCarousel(row.id, (activeIndex - 1 + images.length) % images.length)}
+                                >
+                                  ‹
+                                </button>
+                                <button
+                                  type="button"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-white/80 px-1 text-xs"
+                                  onClick={() => setCarousel(row.id, (activeIndex + 1) % images.length)}
+                                >
+                                  ›
+                                </button>
+                              </>
                             )}
                           </div>
                           <div>
@@ -917,22 +1092,24 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                             </div>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          {(isMerchant ||
-                            !resource.permissions?.update ||
-                            permissions.includes(resource.permissions.update)) && (
-                            <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                              Edit
-                            </Button>
-                          )}
-                          {(isMerchant ||
-                            !resource.permissions?.delete ||
-                            permissions.includes(resource.permissions.delete)) && (
-                            <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
-                              Delete
-                            </Button>
-                          )}
-                        </div>
+                        {canWrite && (
+                          <div className="flex flex-wrap gap-2">
+                            {(isMerchant ||
+                              !resource.permissions?.update ||
+                              permissions.includes(resource.permissions.update)) && (
+                              <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
+                                Edit
+                              </Button>
+                            )}
+                            {(isMerchant ||
+                              !resource.permissions?.delete ||
+                              permissions.includes(resource.permissions.delete)) && (
+                              <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
+                                Delete
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="text-sm text-[var(--muted-ink)]">
                         {row.description || 'No description provided.'}
@@ -953,6 +1130,65 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                     </div>
                   );
                 })
+              )}
+            </div>
+          ) : isClient && resource.key === 'merchants' ? (
+            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
+              {loading ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Loading...
+                </div>
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  No merchants found.
+                </div>
+              ) : (
+                filteredRows.map((row) => (
+                  <div key={row.id} className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+                    <div className="text-lg font-semibold text-[var(--ink)]">
+                      {row.name || row.legal_name || `Merchant #${row.id}`}
+                    </div>
+                    <div className="text-sm text-[var(--muted-ink)]">
+                      {row.city || '-'}, {row.country || '-'}
+                    </div>
+                    <div className="mt-2 text-xs text-[var(--muted-ink)]">Code: {row.merchant_code || '-'}</div>
+                    <div className="mt-4">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/merchant/products?merchant_id=${row.id}`)}
+                      >
+                        View Products
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : isClient && resource.key === 'categories' ? (
+            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
+              {loading ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Loading...
+                </div>
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  No categories found.
+                </div>
+              ) : (
+                filteredRows.map((row) => (
+                  <div key={row.id} className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+                    <div className="text-lg font-semibold text-[var(--ink)]">
+                      {row.name || `Category #${row.id}`}
+                    </div>
+                    <div className="text-xs text-[var(--muted-ink)]">Slug: {row.slug || '-'}</div>
+                    <div className="mt-2">
+                      <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                        {row.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           ) : (
@@ -1046,19 +1282,23 @@ export default function CrudPage({ resource, permissions = [], authType }) {
                                 Info
                               </Button>
                             )}
-                            {(isMerchant ||
-                              !resource.permissions?.update ||
-                              permissions.includes(resource.permissions.update)) && (
-                              <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                                Edit
-                              </Button>
-                            )}
-                            {(isMerchant ||
-                              !resource.permissions?.delete ||
-                              permissions.includes(resource.permissions.delete)) && (
-                              <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
-                                Delete
-                              </Button>
+                            {canWrite && (
+                              <>
+                                {(isMerchant ||
+                                  !resource.permissions?.update ||
+                                  permissions.includes(resource.permissions.update)) && (
+                                  <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
+                                    Edit
+                                  </Button>
+                                )}
+                                {(isMerchant ||
+                                  !resource.permissions?.delete ||
+                                  permissions.includes(resource.permissions.delete)) && (
+                                  <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
+                                    Delete
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                         </TableCell>

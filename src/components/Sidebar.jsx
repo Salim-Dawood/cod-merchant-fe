@@ -94,12 +94,19 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
     return () => window.removeEventListener('profile-avatar-updated', handleAvatarUpdate);
   }, [profile?.id]);
 
+  const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
+  const isClient = authType === 'merchant' && roleName === 'client';
   const visibleSections = sections.filter((section) =>
     authType === 'merchant' ? section.title === 'Merchant' : true
   );
 
   const visibleLinks = visibleSections.flatMap((section) => {
     if (section.title === 'Merchant') {
+      if (isClient) {
+        return section.links.filter((link) =>
+          ['/merchant/merchants', '/merchant/products', '/merchant/categories'].includes(link.to)
+        );
+      }
       return section.links;
     }
     return section.links.filter((link) => !link.permission || permissions.includes(link.permission));
