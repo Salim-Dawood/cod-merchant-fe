@@ -24,7 +24,7 @@ const sections = [
   }
 ];
 
-export default function Sidebar({ permissions = [], authType, profile }) {
+export default function Sidebar({ permissions = [], authType, profile, onLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState({
     Platform: true,
@@ -309,7 +309,24 @@ export default function Sidebar({ permissions = [], authType, profile }) {
                   {profile?.email || 'Pro trial'}
                 </p>
               </div>
-              <span className="ml-auto text-[var(--muted-ink)]">v</span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
+                aria-label="Notifications"
+              >
+                <SidebarIcon name="bell" />
+                <span className="font-display text-[11px] tracking-[0.28em]">Notify</span>
+              </button>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-soft)]"
+              >
+                <SidebarIcon name="bolt" />
+                <span className="font-display text-[11px] tracking-[0.28em]">Log Out</span>
+              </button>
             </div>
           </div>
           </div>
