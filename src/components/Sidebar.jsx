@@ -103,9 +103,7 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
   const visibleLinks = visibleSections.flatMap((section) => {
     if (section.title === 'Merchant') {
       if (isClient) {
-        return section.links.filter((link) =>
-          ['/merchant/merchants', '/merchant/products', '/merchant/categories'].includes(link.to)
-        );
+        return section.links.filter((link) => link.to === '/merchant/merchants');
       }
       return section.links;
     }

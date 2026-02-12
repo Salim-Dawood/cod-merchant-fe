@@ -2,7 +2,7 @@ import * as React from 'react';
 import { cn } from '../../lib/utils';
 
 const Table = React.forwardRef(({ className, ...props }, ref) => (
-  <div className="table-scroll max-h-[60vh] w-full overflow-y-auto overflow-x-hidden">
+  <div className="table-scroll max-h-[60vh] w-full overflow-y-auto overflow-x-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
     <table
       ref={ref}
       className={cn('w-full table-fixed caption-bottom text-sm', className)}
@@ -25,7 +25,7 @@ TableBody.displayName = 'TableBody';
 const TableRow = React.forwardRef(({ className, ...props }, ref) => (
   <tr
     ref={ref}
-    className={cn('border-b border-[var(--border)] hover:bg-[var(--surface-soft)]', className)}
+    className={cn('border-b border-[var(--border)]/70 even:bg-[var(--surface-soft)] hover:bg-[var(--surface-soft)]', className)}
     {...props}
   />
 ));
@@ -35,7 +35,7 @@ const TableHead = React.forwardRef(({ className, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
-      'h-11 px-3 text-left align-middle text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-ink)] whitespace-normal break-all max-w-0',
+      'h-10 px-3 text-left align-middle text-[10px] font-semibold uppercase tracking-[0.16em] text-white/80 whitespace-normal break-all max-w-0',
       className
     )}
     {...props}

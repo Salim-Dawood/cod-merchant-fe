@@ -1196,6 +1196,104 @@ export default function CrudPage({ resource, permissions = [], authType, profile
 
       <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px]">
         <div className="no-scrollbar min-h-0 flex-1 overflow-auto">
+          {isClient && resource.key == 'products' ? (
+            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
+              {loading ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Loading...
+                </div>
+              ) : clientGateMessage ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  {clientGateMessage}
+                </div>
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  No products found.
+                </div>
+              ) : (
+                paginatedRows.map((row) => {
+                  const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                  const statusClass =
+                    statusValue === 'active'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : statusValue === 'pending'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : statusValue === 'suspended'
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+                  const categories = (productCategoryMap[row.id] || []).map((link) => {
+                    const key = link.category_id ? String(link.category_id) : '';
+                    return categoryLabelMap[key] || `#${link.category_id}`;
+                  });
+                  const images = productImageMap[row.id] || [];
+                  const coverUrl = images[0]?.url ? String(images[0].url) : '';
+                  const branchLabel =
+                    row.branch_id !== undefined
+                      ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
+                      : 'Unassigned';
+
+                  return (
+                    <div
+                      key={row.id}
+                      className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-[var(--accent-soft)]">
+                          {coverUrl ? (
+                            <img
+                              src={coverUrl}
+                              alt={row.name || `Product ${row.id}`}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[var(--accent-strong)]">
+                              {getInitials(row.name)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-lg font-semibold text-[var(--ink)]">
+                            {row.name || `Product #${row.id}`}
+                          </div>
+                          <div className="text-xs text-[var(--muted-ink)]">Slug: {row.slug || '-'}</div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                            <Badge className={`border ${statusClass}`}>
+                              {formatValue(row.status)}
+                            </Badge>
+                            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                              {row.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                              Branch: {branchLabel}
+                            </Badge>
+                            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                              Images: {images.length}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-[var(--muted-ink)]">
+                        {row.description || 'No description provided.'}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {categories.length === 0 ? (
+                          <Badge className="border border-dashed border-[var(--border)] bg-transparent">
+                            No categories
+                          </Badge>
+                        ) : (
+                          categories.map((label) => (
+                            <Badge key={`${row.id}-${label}`} className="border border-[var(--border)] bg-[var(--surface)]">
+                              {label}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          ) : (
           <Table className="responsive-table w-full">
             <TableHeader className="sticky top-0 z-10 bg-black text-white">
               <TableRow className="bg-black hover:bg-black">
@@ -1362,6 +1460,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               )}
             </TableBody>
           </Table>
+          )}
         </div>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-3 py-2 text-xs text-[var(--muted-ink)]">
           <div className="flex items-center gap-2">
