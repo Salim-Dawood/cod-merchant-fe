@@ -988,16 +988,29 @@ export default function CrudPage({ resource, permissions = [], authType, profile
 
       <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px]">
         <div className="no-scrollbar min-h-0 flex-1 overflow-auto">
-          {isProduct ? (
-            <div className="grid gap-4 p-4 sm:p-6">
+          <Table className="responsive-table w-full">
+            <TableHeader className="sticky top-0 z-10 bg-black text-white">
+              <TableRow className="bg-black hover:bg-black">
+                <TableHead className="text-white w-[240px] max-w-none sm:w-[300px]">
+                  Profile
+                </TableHead>
+                {tableHeaders.map((header) => (
+                  <TableHead key={header} className="text-white">
+                    {header}
+                  </TableHead>
+                ))}
+                <TableHead className="text-white">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {loading ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
-                  Loading...
-                </div>
+                <TableRow>
+                  <TableCell colSpan={headers.length + 2}>Loading...</TableCell>
+                </TableRow>
               ) : filteredRows.length === 0 ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
-                  No products found.
-                </div>
+                <TableRow>
+                  <TableCell colSpan={headers.length + 2}>No data</TableCell>
+                </TableRow>
               ) : (
                 paginatedRows.map((row) => {
                   const statusValue = row.status ? String(row.status).toLowerCase() : '';
@@ -1009,297 +1022,88 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                       : statusValue === 'suspended'
                       ? 'bg-red-50 text-red-700 border-red-200'
                       : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
-                  const categories = (productCategoryMap[row.id] || []).map((link) => {
-                    const key = link.category_id ? String(link.category_id) : '';
-                    return categoryLabelMap[key] || `#${link.category_id}`;
-                  });
-                  const images = productImageMap[row.id] || [];
-                  const activeIndex = getCarouselIndex(row.id, images.length);
-                  const coverUrl = images[activeIndex]?.url ? String(images[activeIndex].url) : '';
-                  const branchLabel =
-                    row.branch_id !== undefined
-                      ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
-                      : 'Unassigned';
+                  const primaryField = fields.find((field) => field.key === 'name')?.key
+                    || fields.find((field) => field.key === 'email')?.key
+                    || fields[0]?.key;
+                  const avatarText = primaryField ? formatValue(row[primaryField]) : `Record ${row.id}`;
+                  const avatarUrl = row.avatar_url ? String(row.avatar_url) : '';
 
                   return (
-                    <div
-                      key={row.id}
-                      className="flex flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-[var(--accent-soft)]">
-                            {coverUrl ? (
+                    <TableRow key={row.id}>
+                      <TableCell
+                        data-label="Profile"
+                        className="w-[240px] max-w-none sm:w-[300px] whitespace-normal break-words"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
+                            {avatarUrl ? (
                               <img
-                                src={coverUrl}
-                                alt={row.name || `Product ${row.id}`}
+                                src={avatarUrl}
+                                alt={avatarText}
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[var(--accent-strong)]">
-                                {getInitials(row.name)}
-                              </div>
-                            )}
-                            {isClient && images.length > 1 && (
-                              <>
-                                <button
-                                  type="button"
-                                  className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-white/80 px-1 text-xs"
-                                  onClick={() => setCarousel(row.id, (activeIndex - 1 + images.length) % images.length)}
-                                >
-                                  ‹
-                                </button>
-                                <button
-                                  type="button"
-                                  className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-white/80 px-1 text-xs"
-                                  onClick={() => setCarousel(row.id, (activeIndex + 1) % images.length)}
-                                >
-                                  ›
-                                </button>
-                              </>
+                              getInitials(avatarText)
                             )}
                           </div>
-                          <div>
-                            <div className="text-lg font-semibold text-[var(--ink)]">
-                              {row.name || `Product #${row.id}`}
+                          <div className="cell-clamp">
+                            <div className="font-medium text-[var(--ink)]">
+                              {avatarText}
                             </div>
-                            <div className="text-xs text-[var(--muted-ink)]">Slug: {row.slug || '-'}</div>
-                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                              <Badge className={`border ${statusClass}`}>
-                                {formatValue(row.status)}
-                              </Badge>
-                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                {row.is_active ? 'Active' : 'Inactive'}
-                              </Badge>
-                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                MOQ: {row.moq ?? '-'}
-                              </Badge>
-                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                Branch: {branchLabel}
-                              </Badge>
-                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                Images: {images.length}
-                              </Badge>
+                            <div className="text-xs text-[var(--muted-ink)]">
+                              ID #{row.id}
                             </div>
                           </div>
                         </div>
-                        {canWrite && (
-                          <div className="flex flex-wrap gap-2">
-                            {(isMerchant ||
-                              !resource.permissions?.update ||
-                              permissions.includes(resource.permissions.update)) && (
-                              <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                                Edit
-                              </Button>
-                            )}
-                            {(isMerchant ||
-                              !resource.permissions?.delete ||
-                              permissions.includes(resource.permissions.delete)) && (
-                              <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
-                                Delete
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-sm text-[var(--muted-ink)]">
-                        {row.description || 'No description provided.'}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {categories.length === 0 ? (
-                          <Badge className="border border-dashed border-[var(--border)] bg-transparent">
-                            No categories
-                          </Badge>
-                        ) : (
-                          categories.map((label) => (
-                            <Badge key={`${row.id}-${label}`} className="border border-[var(--border)] bg-[var(--surface)]">
-                              {label}
+                      </TableCell>
+                      {tableHeaders.map((header) => (
+                        <TableCell key={`${row.id}-${header}`} data-label={header}>
+                          {header === 'permission_count' ? (
+                            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                              {permissionCount(row.id)}
                             </Badge>
-                          ))
-                        )}
-                      </div>
-                    </div>
+                          ) : header === 'status' ? (
+                            <Badge className={`border ${statusClass}`}>
+                              {formatValue(row[header])}
+                            </Badge>
+                          ) : (
+                            <span className="cell-clamp">{formatValue(row[header])}</span>
+                          )}
+                        </TableCell>
+                      ))}
+                      <TableCell data-label="Actions">
+                        <div className="flex flex-wrap gap-2">
+                          {roleConfig && (
+                            <Button size="sm" variant="outline" onClick={() => openInfo(row)}>
+                              Info
+                            </Button>
+                          )}
+                          {canWrite && (
+                            <>
+                              {(isMerchant ||
+                                !resource.permissions?.update ||
+                                permissions.includes(resource.permissions.update)) && (
+                                <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
+                                  Edit
+                                </Button>
+                              )}
+                              {(isMerchant ||
+                                !resource.permissions?.delete ||
+                                permissions.includes(resource.permissions.delete)) && (
+                                <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
+                                  Delete
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
-            </div>
-          ) : isClient && resource.key === 'merchants' ? (
-            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
-              {loading ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
-                  Loading...
-                </div>
-              ) : filteredRows.length === 0 ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
-                  No merchants found.
-                </div>
-              ) : (
-                paginatedRows.map((row) => (
-                  <div key={row.id} className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-                    <div className="text-lg font-semibold text-[var(--ink)]">
-                      {row.name || row.legal_name || `Merchant #${row.id}`}
-                    </div>
-                    <div className="text-sm text-[var(--muted-ink)]">
-                      {row.city || '-'}, {row.country || '-'}
-                    </div>
-                    <div className="mt-2 text-xs text-[var(--muted-ink)]">Code: {row.merchant_code || '-'}</div>
-                    <div className="mt-4">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => navigate(`/merchant/products?merchant_id=${row.id}`)}
-                      >
-                        View Products
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : isClient && resource.key === 'categories' ? (
-            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
-              {loading ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
-                  Loading...
-                </div>
-              ) : filteredRows.length === 0 ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
-                  No categories found.
-                </div>
-              ) : (
-                paginatedRows.map((row) => (
-                  <div key={row.id} className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-                    <div className="text-lg font-semibold text-[var(--ink)]">
-                      {row.name || `Category #${row.id}`}
-                    </div>
-                    <div className="text-xs text-[var(--muted-ink)]">Slug: {row.slug || '-'}</div>
-                    <div className="mt-2">
-                      <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                        {row.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : (
-            <Table className="responsive-table w-full">
-              <TableHeader className="sticky top-0 z-10 bg-black text-white">
-                <TableRow className="bg-black hover:bg-black">
-                  <TableHead className="text-white w-[240px] max-w-none sm:w-[300px]">
-                    Profile
-                  </TableHead>
-                  {tableHeaders.map((header) => (
-                    <TableHead key={header} className="text-white">
-                      {header}
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-white">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={headers.length + 2}>Loading...</TableCell>
-                  </TableRow>
-                ) : filteredRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={headers.length + 2}>No data</TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedRows.map((row) => {
-                    const statusValue = row.status ? String(row.status).toLowerCase() : '';
-                    const statusClass =
-                      statusValue === 'active'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : statusValue === 'pending'
-                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                        : statusValue === 'suspended'
-                        ? 'bg-red-50 text-red-700 border-red-200'
-                        : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
-                    const primaryField = fields.find((field) => field.key === 'name')?.key
-                      || fields.find((field) => field.key === 'email')?.key
-                      || fields[0]?.key;
-                    const avatarText = primaryField ? formatValue(row[primaryField]) : `Record ${row.id}`;
-                    const avatarUrl = row.avatar_url ? String(row.avatar_url) : '';
-
-                    return (
-                      <TableRow key={row.id}>
-                        <TableCell
-                          data-label="Profile"
-                          className="w-[240px] max-w-none sm:w-[300px] whitespace-normal break-words"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
-                              {avatarUrl ? (
-                                <img
-                                  src={avatarUrl}
-                                  alt={avatarText}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                getInitials(avatarText)
-                              )}
-                            </div>
-                            <div className="cell-clamp">
-                              <div className="font-medium text-[var(--ink)]">
-                                {avatarText}
-                              </div>
-                              <div className="text-xs text-[var(--muted-ink)]">
-                                ID #{row.id}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        {tableHeaders.map((header) => (
-                          <TableCell key={`${row.id}-${header}`} data-label={header}>
-                            {header === 'permission_count' ? (
-                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                {permissionCount(row.id)}
-                              </Badge>
-                            ) : header === 'status' ? (
-                              <Badge className={`border ${statusClass}`}>
-                                {formatValue(row[header])}
-                              </Badge>
-                            ) : (
-                              <span className="cell-clamp">{formatValue(row[header])}</span>
-                            )}
-                          </TableCell>
-                        ))}
-                        <TableCell data-label="Actions">
-                          <div className="flex flex-wrap gap-2">
-                            {roleConfig && (
-                              <Button size="sm" variant="outline" onClick={() => openInfo(row)}>
-                                Info
-                              </Button>
-                            )}
-                            {canWrite && (
-                              <>
-                                {(isMerchant ||
-                                  !resource.permissions?.update ||
-                                  permissions.includes(resource.permissions.update)) && (
-                                  <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                                    Edit
-                                  </Button>
-                                )}
-                                {(isMerchant ||
-                                  !resource.permissions?.delete ||
-                                  permissions.includes(resource.permissions.delete)) && (
-                                  <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
-                                    Delete
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          )}
+            </TableBody>
+          </Table>
         </div>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-3 py-2 text-xs text-[var(--muted-ink)]">
           <div className="flex items-center gap-2">
