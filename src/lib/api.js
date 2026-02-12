@@ -4,7 +4,8 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:30
 
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
-  const accessToken = getAccessToken();
+  const isPlatform = path.startsWith('/platform/');
+  const accessToken = getAccessToken(isPlatform ? 'platform' : 'merchant');
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
