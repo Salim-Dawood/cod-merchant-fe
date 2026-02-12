@@ -4,7 +4,6 @@ import Layout from './components/Layout';
 import CrudPage from './components/CrudPage';
 import resources from './lib/resources';
 import { auth } from './lib/auth';
-import { getRefreshToken } from './lib/session';
 import LoginPage from './pages/Login';
 
 const routes = [
@@ -27,9 +26,6 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
-    const tryMerchantFirst = Boolean(getRefreshToken('merchant'));
-    const tryPlatformFirst = !tryMerchantFirst;
-
     const finishAuthed = (type, profile) => {
       if (!isMounted || !profile) {
         return false;
@@ -60,16 +56,18 @@ export default function App() {
       auth
         .refreshMerchant()
         .then(() => auth.meMerchant())
-        .then((merchantProfile) => finishAuthed('merchant', merchantProfile));
+        .then((merchantProfile) => finishAuthed('merchant', merchantProfile))
+        .catch(() => false);
 
     const attemptPlatform = () =>
       auth
         .refresh()
         .then(() => auth.me())
-        .then((profile) => finishAuthed('platform', profile));
+        .then((profile) => finishAuthed('platform', profile))
+        .catch(() => false);
 
-    (tryMerchantFirst ? attemptMerchant().catch(() => false) : Promise.resolve(false))
-      .then((ok) => (ok ? true : attemptPlatform().catch(() => false)))
+    attemptMerchant()
+      .then((ok) => (ok ? true : attemptPlatform()))
       .then((ok) => {
         if (!ok) {
           handleFailure();
