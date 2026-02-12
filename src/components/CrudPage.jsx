@@ -1381,13 +1381,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                           )}
                         </TableCell>
                       ))}
-                      <TableCell data-label="Actions">
-                        <div className="flex flex-wrap gap-2">
+                      <TableCell data-label="Actions" className="min-w-[160px]">
+                        <div className="flex flex-col gap-2">
                           {isClient && resource.key === 'merchants' && (
                             <Button
                               size="sm"
                               variant="secondary"
-                              className="min-w-[120px] justify-center whitespace-nowrap"
+                              className="w-full justify-center whitespace-nowrap px-4"
                               onClick={() =>
                                 navigate(`/merchant/branches?merchant_id=${row.id}`)
                               }
@@ -1399,7 +1399,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             <Button
                               size="sm"
                               variant="secondary"
-                              className="min-w-[120px] justify-center whitespace-nowrap"
+                              className="w-full justify-center whitespace-nowrap px-4"
                               onClick={() =>
                                 navigate(
                                   `/merchant/categories?merchant_id=${row.merchant_id}&branch_id=${row.id}`
@@ -1413,7 +1413,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             <Button
                               size="sm"
                               variant="secondary"
-                              className="min-w-[120px] justify-center whitespace-nowrap"
+                              className="w-full justify-center whitespace-nowrap px-4"
                               onClick={() => {
                                 const params = new URLSearchParams(location.search);
                                 const merchantId = params.get('merchant_id') || selectedMerchantId || '';
