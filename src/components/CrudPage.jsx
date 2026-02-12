@@ -1387,6 +1387,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             <Button
                               size="sm"
                               variant="secondary"
+                              className="min-w-[120px] justify-center whitespace-nowrap"
                               onClick={() =>
                                 navigate(`/merchant/branches?merchant_id=${row.id}`)
                               }
@@ -1398,6 +1399,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             <Button
                               size="sm"
                               variant="secondary"
+                              className="min-w-[120px] justify-center whitespace-nowrap"
                               onClick={() =>
                                 navigate(
                                   `/merchant/categories?merchant_id=${row.merchant_id}&branch_id=${row.id}`
@@ -1411,6 +1413,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             <Button
                               size="sm"
                               variant="secondary"
+                              className="min-w-[120px] justify-center whitespace-nowrap"
                               onClick={() => {
                                 const params = new URLSearchParams(location.search);
                                 const merchantId = params.get('merchant_id') || selectedMerchantId || '';

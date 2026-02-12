@@ -115,9 +115,7 @@ export default function App() {
     if (authType === 'merchant') {
       const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
       if (roleName === 'client') {
-        return routes.filter((route) =>
-          ['/merchant/merchants', '/merchant/branches', '/merchant/products', '/merchant/categories'].includes(route.path)
-        );
+        return routes.filter((route) => route.path === '/merchant/merchants');
       }
       return routes.filter((route) => route.path.startsWith('/merchant/'));
     }
