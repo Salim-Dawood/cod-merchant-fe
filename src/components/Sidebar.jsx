@@ -122,9 +122,9 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
     <aside className="rise-fade flex-none">
       <div
         className={cn(
-          'glass-panel flex rounded-[32px] px-4 py-4 sm:px-5 sm:py-5 lg:h-screen lg:px-5 lg:py-6',
-          isCollapsed ? 'flex-row gap-4 sm:gap-4 lg:gap-5' : 'flex-col gap-6',
-          isCollapsed ? 'w-[96px] px-4' : 'w-[280px] sm:w-[360px] lg:w-[420px]'
+          'glass-panel flex rounded-[24px] px-3 py-3 sm:px-4 sm:py-4 lg:h-screen lg:px-4 lg:py-5',
+          isCollapsed ? 'flex-row gap-3 sm:gap-3 lg:gap-4' : 'flex-col gap-4',
+          isCollapsed ? 'w-[84px] px-3' : 'w-[240px] sm:w-[300px] lg:w-[320px]'
         )}
       >
         {isCollapsed && (

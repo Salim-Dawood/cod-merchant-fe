@@ -166,6 +166,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [branchMerchantMap, setBranchMerchantMap] = useState({});
   const [clientProducts, setClientProducts] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState({});
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -738,6 +740,17 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     );
   }, [rows, query, tableHeaders, permissionMap, isClient, selectedMerchantId, branchMerchantMap, resource.key, productCategoryMap, clientProducts]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [query, resource.key, selectedMerchantId, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, currentPage, pageSize]);
+
   const permissionCount = (roleId) => (permissionMap[roleId] || []).length;
 
   const openInfo = (row) => {
@@ -911,46 +924,24 @@ export default function CrudPage({ resource, permissions = [], authType, profile
 
   return (
     <div className="flex h-full min-h-0 flex-col space-y-6">
-      <div className="surface-panel rise-fade rounded-[32px] px-4 py-5 sm:px-6 sm:py-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="surface-panel rise-fade rounded-[24px] px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.38em] text-[var(--muted-ink)]">
-              Merchant Ledger
-            </p>
-            <h2 className="font-display text-3xl leading-tight">{resource.title}</h2>
-            <p className="mt-2 text-sm text-[var(--muted-ink)]">
-              Curate {resource.title.toLowerCase()} and keep the storefront experience consistent.
+            <h2 className="font-display text-xl leading-tight">{resource.title}</h2>
+            <p className="text-xs text-[var(--muted-ink)]">
+              {stats.total} total • Highest ID {stats.maxId || '-'}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm sm:px-4 sm:py-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Total</p>
-              <p className="text-lg font-semibold">{stats.total}</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm sm:px-4 sm:py-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Highest ID</p>
-              <p className="text-lg font-semibold">{stats.maxId || '-'}</p>
-            </div>
-            {canWrite && (
-              (isMerchant || !resource.permissions?.create ? (
-                <Button onClick={openCreate}>New Record</Button>
-              ) : (
-                permissions.includes(resource.permissions.create) && (
-                  <Button onClick={openCreate}>New Record</Button>
-                )
-              ))
-            )}
-          </div>
+          {canWrite && (
+            (isMerchant || !resource.permissions?.create ? (
+              <Button size="sm" onClick={openCreate}>New</Button>
+            ) : (
+              permissions.includes(resource.permissions.create) && (
+                <Button size="sm" onClick={openCreate}>New</Button>
+              )
+            ))
+          )}
         </div>
-        {statusPills.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {statusPills.map(([status, count]) => (
-              <Badge key={status} className="border border-[var(--border)] bg-[var(--surface)]">
-                {status}: {count}
-              </Badge>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -960,7 +951,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
             placeholder="Search by any field..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            className="max-w-md"
+            className="max-w-md h-9"
           />
           <Badge className="border border-[var(--border)] bg-[var(--surface)]">
             {loading ? 'Loading' : `${filteredRows.length} rows`}
@@ -995,8 +986,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         )}
       </div>
 
-      <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[32px]">
-        <div className="no-scrollbar h-full min-h-0 overflow-auto">
+      <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px]">
+        <div className="no-scrollbar h-full min-h-0 flex-1 overflow-auto">
           {isProduct ? (
             <div className="grid gap-4 p-4 sm:p-6">
               {loading ? (
@@ -1008,7 +999,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   No products found.
                 </div>
               ) : (
-                filteredRows.map((row) => {
+                paginatedRows.map((row) => {
                   const statusValue = row.status ? String(row.status).toLowerCase() : '';
                   const statusClass =
                     statusValue === 'active'
@@ -1143,7 +1134,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   No merchants found.
                 </div>
               ) : (
-                filteredRows.map((row) => (
+                paginatedRows.map((row) => (
                   <div key={row.id} className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
                     <div className="text-lg font-semibold text-[var(--ink)]">
                       {row.name || row.legal_name || `Merchant #${row.id}`}
@@ -1176,7 +1167,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   No categories found.
                 </div>
               ) : (
-                filteredRows.map((row) => (
+                paginatedRows.map((row) => (
                   <div key={row.id} className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
                     <div className="text-lg font-semibold text-[var(--ink)]">
                       {row.name || `Category #${row.id}`}
@@ -1216,7 +1207,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                     <TableCell colSpan={headers.length + 2}>No data</TableCell>
                   </TableRow>
                 ) : (
-                  filteredRows.map((row) => {
+                paginatedRows.map((row) => {
                     const statusValue = row.status ? String(row.status).toLowerCase() : '';
                     const statusClass =
                       statusValue === 'active'
@@ -1309,6 +1300,41 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               </TableBody>
             </Table>
           )}
+        </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--muted-ink)]">
+          <div className="flex items-center gap-2">
+            <span>Page {currentPage} / {totalPages}</span>
+            <button
+              type="button"
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              Next
+            </button>
+          </div>
+          <label className="flex items-center gap-2">
+            <span>Rows</span>
+            <select
+              className="h-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2"
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+            >
+              <option value={8}>8</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
         </div>
       </div>
 
