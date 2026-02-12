@@ -165,6 +165,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [selectedMerchantId, setSelectedMerchantId] = useState('');
   const [branchOptions, setBranchOptions] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [branchMerchantMap, setBranchMerchantMap] = useState({});
   const [clientProducts, setClientProducts] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState({});
@@ -321,8 +322,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     const params = new URLSearchParams(location.search);
     const merchantId = params.get('merchant_id') || '';
     const branchId = params.get('branch_id') || '';
+    const categoryId = params.get('category_id') || '';
     setSelectedMerchantId(merchantId);
     setSelectedBranchId(branchId);
+    setSelectedCategoryId(categoryId);
   }, [location.search, isClient]);
 
   useEffect(() => {
@@ -725,6 +728,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           const merchantId = branchMerchantMap[String(row.branch_id)];
           return merchantId && String(merchantId) === merchantFilter;
         });
+        if (selectedCategoryId) {
+          baseRows = baseRows.filter((row) =>
+            (productCategoryMap[row.id] || []).some(
+              (link) => String(link.category_id) === String(selectedCategoryId)
+            )
+          );
+        }
       } else if (resource.key === 'categories') {
         const productIds = clientProducts
           .filter((row) => {
@@ -786,6 +796,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     isClient,
     selectedMerchantId,
     selectedBranchId,
+    selectedCategoryId,
     branchMerchantMap,
     resource.key,
     productCategoryMap,
@@ -794,7 +805,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
 
   useEffect(() => {
     setPage(1);
-  }, [query, resource.key, selectedMerchantId, selectedBranchId, pageSize]);
+  }, [query, resource.key, selectedMerchantId, selectedBranchId, selectedCategoryId, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -830,6 +841,39 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     return map;
   }, [refOptions]);
 
+  const scopedProductIds = useMemo(() => {
+    if (!isClient) {
+      return [];
+    }
+    let items = resource.key === 'products' ? rows : clientProducts;
+    if (selectedBranchId) {
+      items = items.filter((row) => String(row.branch_id) === String(selectedBranchId));
+    }
+    if (selectedMerchantId) {
+      items = items.filter((row) => {
+        const merchantId = branchMerchantMap[String(row.branch_id)];
+        return merchantId && String(merchantId) === String(selectedMerchantId);
+      });
+    }
+    return items.map((row) => row.id);
+  }, [rows, clientProducts, isClient, selectedBranchId, selectedMerchantId, branchMerchantMap, resource.key]);
+
+  const visibleCategoryOptions = useMemo(() => {
+    if (!isClient) {
+      return [];
+    }
+    if (scopedProductIds.length === 0) {
+      return categoryOptions;
+    }
+    const allowed = new Set();
+    Object.values(productCategoryMap).flat().forEach((link) => {
+      if (scopedProductIds.includes(link.product_id)) {
+        allowed.add(String(link.category_id));
+      }
+    });
+    return categoryOptions.filter((option) => allowed.has(String(option.value)));
+  }, [categoryOptions, isClient, scopedProductIds, productCategoryMap]);
+
   const visibleBranchOptions = useMemo(() => {
     if (!selectedMerchantId) {
       return branchOptions;
@@ -838,6 +882,28 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       (option) => String(option.merchant_id) === String(selectedMerchantId)
     );
   }, [branchOptions, selectedMerchantId]);
+
+  const clientGateMessage = useMemo(() => {
+    if (!isClient) {
+      return '';
+    }
+    if (resource.key === 'merchants') {
+      return '';
+    }
+    if (!selectedMerchantId) {
+      return 'Select a merchant first.';
+    }
+    if (resource.key === 'branches') {
+      return '';
+    }
+    if (!selectedBranchId) {
+      return 'Select a branch first.';
+    }
+    if (resource.key === 'products' && !selectedCategoryId) {
+      return 'Select a category first.';
+    }
+    return '';
+  }, [isClient, resource.key, selectedMerchantId, selectedBranchId, selectedCategoryId]);
 
   const existingProductImages = useMemo(
     () => (editRow && editRow.id ? productImageMap[editRow.id] || [] : []),
@@ -1038,6 +1104,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   if (nextBranchId !== selectedBranchId) {
                     setSelectedBranchId(nextBranchId);
                   }
+                  if (!nextBranchId) {
+                    setSelectedCategoryId('');
+                  }
                   const params = new URLSearchParams(location.search);
                   if (value) {
                     params.set('merchant_id', value);
@@ -1048,6 +1117,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                     params.set('branch_id', nextBranchId);
                   } else {
                     params.delete('branch_id');
+                  }
+                  if (!nextBranchId) {
+                    params.delete('category_id');
                   }
                   navigate({ pathname: location.pathname, search: params.toString() });
                 }}
@@ -1068,11 +1140,17 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 onChange={(event) => {
                   const value = event.target.value;
                   setSelectedBranchId(value);
+                  if (!value) {
+                    setSelectedCategoryId('');
+                  }
                   const params = new URLSearchParams(location.search);
                   if (value) {
                     params.set('branch_id', value);
                   } else {
                     params.delete('branch_id');
+                  }
+                  if (!value) {
+                    params.delete('category_id');
                   }
                   navigate({ pathname: location.pathname, search: params.toString() });
                 }}
@@ -1085,6 +1163,33 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 ))}
               </select>
             </label>
+            {resource.key === 'products' && (
+              <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
+                <span>Category</span>
+                <select
+                  className="h-9 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
+                  value={selectedCategoryId}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedCategoryId(value);
+                    const params = new URLSearchParams(location.search);
+                    if (value) {
+                      params.set('category_id', value);
+                    } else {
+                      params.delete('category_id');
+                    }
+                    navigate({ pathname: location.pathname, search: params.toString() });
+                  }}
+                >
+                  <option value="">All</option>
+                  {visibleCategoryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
         )}
       </div>
@@ -1106,7 +1211,11 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {clientGateMessage ? (
+                <TableRow>
+                  <TableCell colSpan={headers.length + 2}>{clientGateMessage}</TableCell>
+                </TableRow>
+              ) : loading ? (
                 <TableRow>
                   <TableCell colSpan={headers.length + 2}>Loading...</TableCell>
                 </TableRow>
@@ -1176,6 +1285,52 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                       ))}
                       <TableCell data-label="Actions">
                         <div className="flex flex-wrap gap-2">
+                          {isClient && resource.key === 'merchants' && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() =>
+                                navigate(`/merchant/branches?merchant_id=${row.id}`)
+                              }
+                            >
+                              View Branches
+                            </Button>
+                          )}
+                          {isClient && resource.key === 'branches' && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() =>
+                                navigate(
+                                  `/merchant/categories?merchant_id=${row.merchant_id}&branch_id=${row.id}`
+                                )
+                              }
+                            >
+                              View Categories
+                            </Button>
+                          )}
+                          {isClient && resource.key === 'categories' && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                const params = new URLSearchParams(location.search);
+                                const merchantId = params.get('merchant_id') || selectedMerchantId || '';
+                                const branchId = params.get('branch_id') || selectedBranchId || '';
+                                const nextParams = new URLSearchParams();
+                                if (merchantId) {
+                                  nextParams.set('merchant_id', merchantId);
+                                }
+                                if (branchId) {
+                                  nextParams.set('branch_id', branchId);
+                                }
+                                nextParams.set('category_id', row.id);
+                                navigate(`/merchant/products?${nextParams.toString()}`);
+                              }}
+                            >
+                              View Products
+                            </Button>
+                          )}
                           {roleConfig && (
                             <Button size="sm" variant="outline" onClick={() => openInfo(row)}>
                               Info
