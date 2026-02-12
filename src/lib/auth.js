@@ -50,6 +50,11 @@ export const auth = {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
+  registerClient: (payload) =>
+    request('/merchant/auth/register-client', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
   refresh: async () => {
     const refreshToken = getRefreshToken('platform');
     const data = await request('/platform/auth/refresh', {

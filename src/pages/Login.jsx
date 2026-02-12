@@ -14,6 +14,7 @@ export default function LoginPage({ onSuccess }) {
   const [merchantCountry, setMerchantCountry] = useState('');
   const [merchantCity, setMerchantCity] = useState('');
   const [merchantAddress, setMerchantAddress] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
   const [success, setSuccess] = useState('');
   const [mode, setMode] = useState('admin');
   const [error, setError] = useState('');
@@ -159,7 +160,19 @@ export default function LoginPage({ onSuccess }) {
         });
         setSuccess('Merchant registered. You can now log in as a platform admin.');
         setMode('merchant');
+      } else if (mode === 'client-register') {
+        await auth.registerClient({
+          email,
+          password,
+          phone: clientPhone
+        });
+        setSuccess('Client registered. You can now log in.');
+        setMode('client');
       } else if (mode === 'merchant') {
+        await auth.loginMerchant(email, password);
+        await onSuccess?.('merchant');
+        navigate('/merchant/merchants', { replace: true });
+      } else if (mode === 'client') {
         await auth.loginMerchant(email, password);
         await onSuccess?.('merchant');
         navigate('/merchant/merchants', { replace: true });
@@ -257,15 +270,23 @@ export default function LoginPage({ onSuccess }) {
               <h2 className="font-display text-2xl">
                 {mode === 'register'
                   ? 'Merchant Registration'
+                  : mode === 'client-register'
+                  ? 'Client Registration'
                   : mode === 'merchant'
                   ? 'Merchant Login'
+                  : mode === 'client'
+                  ? 'Client Login'
                   : 'Admin Login'}
               </h2>
               <p className="mt-2 text-sm text-[var(--muted-ink)]">
                 {mode === 'register'
                   ? 'Create a merchant profile and primary admin.'
+                  : mode === 'client-register'
+                  ? 'Create a client account with read-only access.'
                   : mode === 'merchant'
                   ? 'Use your merchant admin email and password.'
+                  : mode === 'client'
+                  ? 'Use your client email and password.'
                   : 'Use your platform admin email and password.'}
               </p>
             </div>
@@ -294,6 +315,16 @@ export default function LoginPage({ onSuccess }) {
               <button
                 type="button"
                 onClick={() => {
+                  setMode('client');
+                  setSuccess('');
+                }}
+                className={modeButtonClass('client')}
+              >
+                Client Login
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setMode('register');
                   setSuccess('');
                   setEmail('');
@@ -302,6 +333,18 @@ export default function LoginPage({ onSuccess }) {
                 className={modeButtonClass('register')}
               >
                 Merchant Register
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('client-register');
+                  setSuccess('');
+                  setEmail('');
+                  setPassword('');
+                }}
+                className={modeButtonClass('client-register')}
+              >
+                Client Register
               </button>
             </div>
 
@@ -397,12 +440,24 @@ export default function LoginPage({ onSuccess }) {
                 </label>
               </div>
             )}
+            {mode === 'client-register' && (
+              <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                Phone (optional)
+                <Input
+                  type="text"
+                  value={clientPhone}
+                  onChange={(event) => setClientPhone(event.target.value)}
+                />
+              </label>
+            )}
 
             <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
               {mode === 'merchant'
                 ? 'Merchant Email'
                 : mode === 'register'
                 ? 'Owner Email'
+                : mode === 'client' || mode === 'client-register'
+                ? 'Client Email'
                 : 'Admin Email'}
               <Input
                 type="email"
@@ -420,6 +475,8 @@ export default function LoginPage({ onSuccess }) {
                 ? 'Merchant Password'
                 : mode === 'register'
                 ? 'Owner Password'
+                : mode === 'client' || mode === 'client-register'
+                ? 'Client Password'
                 : 'Admin Password'}
               <div className="relative">
                 <Input
@@ -447,6 +504,8 @@ export default function LoginPage({ onSuccess }) {
                   ? 'Submitting...'
                   : mode === 'register'
                   ? 'Create Merchant'
+                  : mode === 'client-register'
+                  ? 'Create Client'
                   : 'Sign In'}
               </Button>
               <p className="text-xs text-[var(--muted-ink)]">
