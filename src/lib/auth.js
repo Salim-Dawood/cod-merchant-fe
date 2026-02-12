@@ -61,6 +61,7 @@ export const auth = {
       method: 'POST',
       headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined
     });
+    setAuthMode('platform');
     setAuthTokens('platform', data);
     return data;
   },
@@ -70,6 +71,7 @@ export const auth = {
       method: 'POST',
       headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined
     });
+    setAuthMode('merchant');
     setAuthTokens('merchant', data);
     return data;
   },
