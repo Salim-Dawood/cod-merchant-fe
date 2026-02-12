@@ -32,6 +32,7 @@ export const auth = {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
+    clearAuthTokens('merchant');
     setAuthMode('platform');
     setAuthTokens('platform', data);
     return data;
@@ -41,6 +42,7 @@ export const auth = {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
+    clearAuthTokens('platform');
     setAuthMode('merchant');
     setAuthTokens('merchant', data);
     return data;
@@ -61,6 +63,7 @@ export const auth = {
       method: 'POST',
       headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined
     });
+    clearAuthTokens('merchant');
     setAuthMode('platform');
     setAuthTokens('platform', data);
     return data;
@@ -71,6 +74,7 @@ export const auth = {
       method: 'POST',
       headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined
     });
+    clearAuthTokens('platform');
     setAuthMode('merchant');
     setAuthTokens('merchant', data);
     return data;
