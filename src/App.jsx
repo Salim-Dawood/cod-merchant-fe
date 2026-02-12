@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import CrudPage from './components/CrudPage';
 import resources from './lib/resources';
 import { auth } from './lib/auth';
+import { getRefreshToken } from './lib/session';
 import LoginPage from './pages/Login';
 
 const routes = [
@@ -26,49 +27,56 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
-    auth
-      .refresh()
-      .then(() => auth.me())
-      .then((profile) => {
-        if (isMounted) {
-          setAuthed(true);
-          setAuthType('platform');
-          setPermissions(profile.permissions || []);
-          setProfile(profile);
+    const tryMerchantFirst = Boolean(getRefreshToken('merchant'));
+    const tryPlatformFirst = !tryMerchantFirst;
+
+    const finishAuthed = (type, profile) => {
+      if (!isMounted || !profile) {
+        return false;
+      }
+      setAuthed(true);
+      setAuthType(type);
+      setPermissions(profile.permissions || []);
+      setProfile(profile);
+      return true;
+    };
+
+    const handleFailure = () => {
+      if (isMounted) {
+        setAuthed(false);
+        setAuthType(null);
+        setPermissions([]);
+        setProfile(null);
+      }
+    };
+
+    const setReady = () => {
+      if (isMounted) {
+        setAuthReady(true);
+      }
+    };
+
+    const attemptMerchant = () =>
+      auth
+        .refreshMerchant()
+        .then(() => auth.meMerchant())
+        .then((merchantProfile) => finishAuthed('merchant', merchantProfile));
+
+    const attemptPlatform = () =>
+      auth
+        .refresh()
+        .then(() => auth.me())
+        .then((profile) => finishAuthed('platform', profile));
+
+    (tryMerchantFirst ? attemptMerchant().catch(() => false) : Promise.resolve(false))
+      .then((ok) => (ok ? true : attemptPlatform().catch(() => false)))
+      .then((ok) => {
+        if (!ok) {
+          handleFailure();
         }
       })
-      .catch(() => {
-        auth
-          .refreshMerchant()
-          .then(() => auth.meMerchant())
-          .then(() => auth.meMerchant())
-          .then((merchantProfile) => {
-            if (isMounted && merchantProfile) {
-              setAuthed(true);
-              setAuthType('merchant');
-              setPermissions(merchantProfile.permissions || []);
-              setProfile(merchantProfile);
-            }
-          })
-          .catch(() => {
-            if (isMounted) {
-              setAuthed(false);
-              setAuthType(null);
-              setPermissions([]);
-              setProfile(null);
-            }
-          })
-          .finally(() => {
-            if (isMounted) {
-              setAuthReady(true);
-            }
-          });
-      })
-      .finally(() => {
-        if (isMounted) {
-          setAuthReady(true);
-        }
-      });
+      .finally(setReady);
+
     return () => {
       isMounted = false;
     };
