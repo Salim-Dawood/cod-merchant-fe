@@ -986,8 +986,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         )}
       </div>
 
-      <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px]">
-        <div className="no-scrollbar h-full min-h-0 flex-1 overflow-auto">
+      <div className="soft-panel flex min-h-0 flex-col rounded-[24px]">
+        <div className="no-scrollbar min-h-0 overflow-auto">
           {isProduct ? (
             <div className="grid gap-4 p-4 sm:p-6">
               {loading ? (
@@ -1301,12 +1301,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
             </Table>
           )}
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--muted-ink)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-3 py-2 text-xs text-[var(--muted-ink)]">
           <div className="flex items-center gap-2">
             <span>Page {currentPage} / {totalPages}</span>
             <button
               type="button"
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1"
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5"
               disabled={currentPage <= 1}
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             >
@@ -1314,7 +1314,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
             </button>
             <button
               type="button"
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1"
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5"
               disabled={currentPage >= totalPages}
               onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
             >
@@ -1324,7 +1324,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           <label className="flex items-center gap-2">
             <span>Rows</span>
             <select
-              className="h-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2"
+              className="h-7 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2"
               value={pageSize}
               onChange={(event) => setPageSize(Number(event.target.value))}
             >
