@@ -52,6 +52,26 @@ function getInitials(value) {
   return initials.toUpperCase();
 }
 
+function FlagChip({ title, url }) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={title || 'Flag'}
+        title={title}
+        className="h-5 w-5 rounded-[6px] border border-[var(--border)] object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      title={title}
+      className="inline-flex h-5 w-5 items-center justify-center overflow-hidden rounded-[6px] border border-[var(--border)]"
+      style={{ background: 'linear-gradient(180deg, #16a34a 0%, #16a34a 33%, #ffffff 33%, #ffffff 66%, #111827 66%)' }}
+    />
+  );
+}
+
 function normalizeServerValidation(data, fields) {
   const fieldKeys = new Set(fields.map((field) => field.key));
   const errors = {};
@@ -145,6 +165,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [rolePermissionOptions, setRolePermissionOptions] = useState([]);
   const [selectedRolePermissions, setSelectedRolePermissions] = useState([]);
   const [rolePermOpen, setRolePermOpen] = useState(false);
+  const [roleSelectOpen, setRoleSelectOpen] = useState('');
   const [rolePermQuery, setRolePermQuery] = useState('');
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoRole, setInfoRole] = useState(null);
@@ -154,6 +175,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [showPasswords, setShowPasswords] = useState({});
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
+  const [flagUploading, setFlagUploading] = useState(false);
+  const flagInputRef = useRef(null);
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [productCategoryMap, setProductCategoryMap] = useState({});
   const [productImageMap, setProductImageMap] = useState({});
@@ -183,6 +206,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     }
     if (resource.key === 'users') {
       return '/merchant/users';
+    }
+    return '';
+  }, [resource.key]);
+  const flagUploadEndpoint = useMemo(() => {
+    if (resource.key === 'branches') {
+      return '/merchant/branches';
     }
     return '';
   }, [resource.key]);
@@ -341,6 +370,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       }
 
       try {
+        const needsBranchFlags = refFields.some((field) => field.ref === 'branch-roles' || field.ref === 'branches');
+        let branchFlagMap = new Map();
+        if (needsBranchFlags) {
+          const branches = await api.list('branches');
+          const branchItems = Array.isArray(branches) ? branches : [];
+          branchFlagMap = new Map(
+            branchItems.map((branch) => [String(branch.id), branch.flag_url || ''])
+          );
+        }
+
         const results = await Promise.all(
           refFields.map(async (field) => {
             const data = await api.list(field.ref);
@@ -353,10 +392,18 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 item.email ||
                 item.key_name ||
                 `#${item.id}`;
-              return {
+              const option = {
                 value: String(item.id),
                 label: `${labelValue} (#${item.id})`
               };
+              if (field.ref === 'branches') {
+                option.flag_url = item.flag_url || '';
+              }
+              if (field.ref === 'branch-roles') {
+                option.branch_id = item.branch_id;
+                option.flag_url = branchFlagMap.get(String(item.branch_id)) || '';
+              }
+              return option;
             });
             return [field.key, options];
           })
@@ -993,6 +1040,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     avatarInputRef.current?.click();
   };
 
+  const handleFlagSelect = () => {
+    if (!editRow?.id || !flagUploadEndpoint) {
+      return;
+    }
+    flagInputRef.current?.click();
+  };
+
   const handleAvatarUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file || !editRow?.id || !avatarUploadEndpoint) {
@@ -1034,6 +1088,39 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       window.alert(err.message || 'Failed to upload photo');
     } finally {
       setAvatarUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleFlagUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !editRow?.id || !flagUploadEndpoint) {
+      return;
+    }
+    try {
+      setFlagUploading(true);
+      const token = getAccessToken();
+      const formData = new FormData();
+      formData.append('photo', file);
+      const response = await fetch(`${API_BASE_URL}${flagUploadEndpoint}/${editRow.id}/flag`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
+        body: formData
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to upload flag');
+      }
+      const data = await response.json().catch(() => null);
+      const nextUrl = data?.flag_url || data?.url;
+      if (nextUrl) {
+        setForm((prev) => ({ ...prev, flag_url: String(nextUrl) }));
+      }
+    } catch (err) {
+      window.alert(err.message || 'Failed to upload flag');
+    } finally {
+      setFlagUploading(false);
       event.target.value = '';
     }
   };
@@ -1341,13 +1428,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   const branchOption = isUserResource
                     ? refOptions.branch_id?.find((option) => String(option.value) === String(row.branch_id))
                     : null;
-                  const roleOption = isUserResource
-                    ? refOptions.merchant_role_id?.find((option) => String(option.value) === String(row.merchant_role_id))
-                    : null;
                   const compactOptionLabel = (label) =>
                     label ? String(label).replace(/\s*\(#\d+\)\s*$/, '') : '';
                   const branchLabel = compactOptionLabel(branchOption?.label);
-                  const roleLabel = compactOptionLabel(roleOption?.label);
+                  const branchFlagUrl = branchOption?.flag_url || '';
 
                   return (
                     <TableRow key={row.id}>
@@ -1373,21 +1457,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted-ink)]">
                               <span>ID #{row.id}</span>
-                              {isUserResource && roleLabel && (
-                                <Badge
-                                  title={roleLabel}
-                                  className="flex h-5 w-5 items-center justify-center border border-[var(--border)] bg-[var(--surface)] px-0 text-[9px] uppercase"
-                                >
-                                  {roleLabel.slice(0, 1)}
-                                </Badge>
-                              )}
                               {isUserResource && branchLabel && (
-                                <Badge
-                                  title={branchLabel}
-                                  className="flex h-5 w-5 items-center justify-center border border-[var(--border)] bg-[var(--surface)] px-0 text-[9px] uppercase"
-                                >
-                                  {branchLabel.slice(0, 1)}
-                                </Badge>
+                                <FlagChip title={branchLabel} url={branchFlagUrl} />
                               )}
                             </div>
                           </div>
@@ -1545,25 +1616,79 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               if (field.type === 'select' || field.ref) {
                 const options = field.ref ? refOptions[field.key] || [] : field.options || [];
                 const hasError = Boolean(fieldErrors[field.key]);
+                const hasRoleOptions = options.some((option) => {
+                  const label = option?.label || option;
+                  return typeof label === 'string' && /manager|support/i.test(label);
+                });
+                const selectedOption =
+                  options.find((option) => String(option.value ?? option) === String(form[field.key] ?? '')) || null;
                 return (
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)] md:col-span-2">
                     {field.label}
-                    <select
-                      className={`h-11 rounded-2xl border bg-[var(--surface)] px-4 text-sm text-[var(--ink)] shadow-sm focus-visible:outline-none focus-visible:ring-2 ${
-                        hasError
-                          ? 'border-red-300 focus-visible:ring-red-200'
-                          : 'border-[var(--border)] focus-visible:ring-[var(--accent)]'
-                      }`}
-                      value={form[field.key] ?? ''}
-                      onChange={(event) => handleChange(field.key, event.target.value)}
-                    >
-                      <option value="">Select</option>
-                      {options.map((option) => (
-                        <option key={option.value || option} value={option.value || option}>
-                          {option.label || option}
-                        </option>
-                      ))}
-                    </select>
+                    {hasRoleOptions ? (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className={`flex h-11 w-full items-center justify-between rounded-2xl border bg-[var(--surface)] px-4 text-sm text-[var(--ink)] shadow-sm focus-visible:outline-none focus-visible:ring-2 ${
+                            hasError
+                              ? 'border-red-300 focus-visible:ring-red-200'
+                              : 'border-[var(--border)] focus-visible:ring-[var(--accent)]'
+                          }`}
+                          onClick={() =>
+                            setRoleSelectOpen((prev) => (prev === field.key ? '' : field.key))
+                          }
+                        >
+                          <span className="flex items-center gap-2">
+                            <FlagChip title={selectedOption?.label || 'Role flag'} url={selectedOption?.flag_url} />
+                            <span>{selectedOption?.label || selectedOption || 'Select'}</span>
+                          </span>
+                          <span className="text-xs text-[var(--muted-ink)]">
+                            {roleSelectOpen === field.key ? 'Hide' : 'Show'}
+                          </span>
+                        </button>
+                        {roleSelectOpen === field.key && (
+                          <div className="absolute z-20 mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
+                            <div className="max-h-60 overflow-y-auto">
+                              {options.map((option) => {
+                                const value = option.value || option;
+                                const label = option.label || option;
+                                return (
+                                  <button
+                                    key={value}
+                                    type="button"
+                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-[var(--ink)] hover:bg-[var(--surface-soft)]"
+                                    onClick={() => {
+                                      handleChange(field.key, value);
+                                      setRoleSelectOpen('');
+                                    }}
+                                  >
+                                    <FlagChip title={label} url={option.flag_url} />
+                                    <span>{label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <select
+                        className={`h-11 rounded-2xl border bg-[var(--surface)] px-4 text-sm text-[var(--ink)] shadow-sm focus-visible:outline-none focus-visible:ring-2 ${
+                          hasError
+                            ? 'border-red-300 focus-visible:ring-red-200'
+                            : 'border-[var(--border)] focus-visible:ring-[var(--accent)]'
+                        }`}
+                        value={form[field.key] ?? ''}
+                        onChange={(event) => handleChange(field.key, event.target.value)}
+                      >
+                        <option value="">Select</option>
+                        {options.map((option) => (
+                          <option key={option.value || option} value={option.value || option}>
+                            {option.label || option}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {hasError && (
                       <span className="text-xs text-red-600">{fieldErrors[field.key]}</span>
                     )}
@@ -1586,6 +1711,44 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               }
 
               const hasError = Boolean(fieldErrors[field.key]);
+              if (field.key === 'flag_url') {
+                return (
+                  <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                    {'Flag'}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <input
+                        ref={flagInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFlagUpload}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleFlagSelect}
+                        disabled={!editRow?.id || !flagUploadEndpoint || flagUploading}
+                      >
+                        {flagUploading ? 'Uploading...' : 'Upload Flag'}
+                      </Button>
+                      {form.flag_url && (
+                        <img
+                          src={String(form.flag_url)}
+                          alt="Branch flag"
+                          className="h-5 w-5 rounded-[6px] border border-[var(--border)] object-cover"
+                        />
+                      )}
+                      {!editRow?.id && (
+                        <span className="text-xs text-[var(--muted-ink)]">Save the record before uploading.</span>
+                      )}
+                    </div>
+                    {hasError && (
+                      <span className="text-xs text-red-600">{fieldErrors[field.key]}</span>
+                    )}
+                  </label>
+                );
+              }
               if (field.key === 'avatar_url') {
                 return (
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">

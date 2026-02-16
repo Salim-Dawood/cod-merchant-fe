@@ -98,6 +98,7 @@ const resources = {
           refLabel: 'name'
         },
         { key: 'name', label: 'Name', type: 'text', required: true },
+        { key: 'flag_url', label: 'Flag', type: 'text' },
         { key: 'code', label: 'Code', type: 'text', required: true },
         {
           key: 'type',
