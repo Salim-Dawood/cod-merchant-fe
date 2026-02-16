@@ -154,8 +154,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [showPasswords, setShowPasswords] = useState({});
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
-  const [logoUploading, setLogoUploading] = useState(false);
-  const logoInputRef = useRef(null);
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [productCategoryMap, setProductCategoryMap] = useState({});
   const [productImageMap, setProductImageMap] = useState({});
@@ -167,7 +165,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [selectedMerchantId, setSelectedMerchantId] = useState('');
   const [branchOptions, setBranchOptions] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState('');
-  const [branchMetaMap, setBranchMetaMap] = useState({});
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [branchMerchantMap, setBranchMerchantMap] = useState({});
   const [clientProducts, setClientProducts] = useState([]);
@@ -186,12 +183,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     }
     if (resource.key === 'users') {
       return '/merchant/users';
-    }
-    return '';
-  }, [resource.key]);
-  const logoUploadEndpoint = useMemo(() => {
-    if (resource.key === 'branches') {
-      return '/merchant/branches';
     }
     return '';
   }, [resource.key]);
@@ -232,24 +223,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           }))
         );
         const branchMap = {};
-        const branchMeta = {};
         clientBranches.forEach((branch) => {
           if (branch?.id) {
-            const key = String(branch.id);
-            branchMap[key] = branch.merchant_id;
-            branchMeta[key] = {
-              label: branch.name || `Branch #${branch.id}`,
-              logoUrl: branch.logo_url ? String(branch.logo_url) : ''
-            };
+            branchMap[String(branch.id)] = branch.merchant_id;
           }
         });
         setBranchMerchantMap(branchMap);
-        setBranchMetaMap(branchMeta);
       } else {
         setMerchantOptions([]);
         setBranchOptions([]);
         setBranchMerchantMap({});
-        setBranchMetaMap({});
       }
       if (resource.key === 'products') {
         const requests = [
@@ -1055,53 +1038,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     }
   };
 
-  const handleLogoSelect = () => {
-    if (!editRow?.id || !logoUploadEndpoint) {
-      return;
-    }
-    logoInputRef.current?.click();
-  };
-
-  const handleLogoUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !editRow?.id || !logoUploadEndpoint) {
-      return;
-    }
-    try {
-      setLogoUploading(true);
-      const token = getAccessToken();
-      const formData = new FormData();
-      formData.append('photo', file);
-      const response = await fetch(`${API_BASE_URL}${logoUploadEndpoint}/${editRow.id}/logo`, {
-        method: 'PUT',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        credentials: 'include',
-        body: formData
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Failed to upload logo');
-      }
-      const data = await response.json().catch(() => null);
-      const nextUrl = data?.logo_url || data?.url;
-      if (nextUrl) {
-        setForm((prev) => ({ ...prev, logo_url: String(nextUrl) }));
-        setRows((prev) =>
-          prev.map((row) =>
-            row.id === editRow.id
-              ? { ...row, logo_url: String(nextUrl) }
-              : row
-          )
-        );
-      }
-    } catch (err) {
-      window.alert(err.message || 'Failed to upload logo');
-    } finally {
-      setLogoUploading(false);
-      event.target.value = '';
-    }
-  };
-
   if (!canRead) {
     return (
       <div className="surface-panel rise-fade rounded-3xl px-6 py-8">
@@ -1291,22 +1227,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   });
                   const images = productImageMap[row.id] || [];
                   const coverUrl = images[0]?.url ? String(images[0].url) : '';
-                  const branchId = row.branch_id;
-                  const branchMeta =
-                    branchId !== undefined && branchId !== null
-                      ? branchMetaMap[String(branchId)]
-                      : null;
                   const branchLabel =
-                    branchId !== undefined && branchId !== null
-                      ? branchMeta?.label ||
-                        branchLabelMap[String(branchId)] ||
-                        `#${branchId}`
+                    row.branch_id !== undefined
+                      ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
                       : 'Unassigned';
-                  const branchLogo = branchMeta?.logoUrl || '';
-                  const showBranchLogo =
-                    isClient &&
-                    branchLogo &&
-                    (!selectedBranchId || String(selectedBranchId) !== String(branchId));
 
                   return (
                     <div
@@ -1339,15 +1263,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             <Badge className="border border-[var(--border)] bg-[var(--surface)]">
                               {row.is_active ? 'Active' : 'Inactive'}
                             </Badge>
-                            <Badge className="flex items-center gap-2 border border-[var(--border)] bg-[var(--surface)]">
-                              {showBranchLogo && (
-                                <img
-                                  src={branchLogo}
-                                  alt={`${branchLabel} logo`}
-                                  className="h-4 w-4 rounded-full object-cover"
-                                />
-                              )}
-                              <span>Branch: {branchLabel}</span>
+                            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                              Branch: {branchLabel}
                             </Badge>
                             <Badge className="border border-[var(--border)] bg-[var(--surface)]">
                               Images: {images.length}
@@ -1459,52 +1376,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             <Badge className={`border ${statusClass}`}>
                               {formatValue(row[header])}
                             </Badge>
-                          ) : header === 'branch_id' ? (
-                            (() => {
-                              const branchId = row.branch_id;
-                              const branchMeta =
-                                branchId !== undefined && branchId !== null
-                                  ? branchMetaMap[String(branchId)]
-                                  : null;
-                              const branchLabel =
-                                branchId !== undefined && branchId !== null
-                                  ? branchMeta?.label ||
-                                    branchLabelMap[String(branchId)] ||
-                                    `#${branchId}`
-                                  : '-';
-                              const branchLogo = branchMeta?.logoUrl || '';
-                              const showBranchLogo =
-                                isClient &&
-                                branchLogo &&
-                                (!selectedBranchId || String(selectedBranchId) !== String(branchId));
-                              return (
-                                <div className="flex items-center gap-2">
-                                  {showBranchLogo && (
-                                    <img
-                                      src={branchLogo}
-                                      alt={`${branchLabel} logo`}
-                                      className="h-5 w-5 rounded-full object-cover"
-                                    />
-                                  )}
-                                  <span className="cell-clamp">{branchLabel}</span>
-                                </div>
-                              );
-                            })()
-                          ) : header === 'logo_url' ? (
-                            row[header] ? (
-                              <div className="flex items-center gap-2">
-                                <img
-                                  src={String(row[header])}
-                                  alt={`${row.name || 'Branch'} logo`}
-                                  className="h-7 w-7 rounded-full object-cover"
-                                />
-                                <span className="cell-clamp text-xs text-[var(--muted-ink)]">
-                                  {String(row[header])}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="cell-clamp">-</span>
-                            )
                           ) : (
                             <span className="cell-clamp">{formatValue(row[header])}</span>
                           )}
@@ -1708,45 +1579,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                         disabled={!editRow?.id || !avatarUploadEndpoint || avatarUploading}
                       >
                         {avatarUploading ? 'Uploading...' : 'Upload Photo'}
-                      </Button>
-                      {!editRow?.id && (
-                        <span className="text-xs text-[var(--muted-ink)]">Save the record before uploading.</span>
-                      )}
-                    </div>
-                    {hasError && (
-                      <span className="text-xs text-red-600">{fieldErrors[field.key]}</span>
-                    )}
-                  </label>
-                );
-              }
-              if (field.key === 'logo_url') {
-                const logoUrl = form[field.key] ? String(form[field.key]) : '';
-                return (
-                  <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                    {field.label}
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="h-12 w-12 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)]">
-                        {logoUrl ? (
-                          <img src={logoUrl} alt="Branch logo" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="h-full w-full" />
-                        )}
-                      </div>
-                      <input
-                        ref={logoInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleLogoUpload}
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={handleLogoSelect}
-                        disabled={!editRow?.id || !logoUploadEndpoint || logoUploading}
-                      >
-                        {logoUploading ? 'Uploading...' : 'Upload Logo'}
                       </Button>
                       {!editRow?.id && (
                         <span className="text-xs text-[var(--muted-ink)]">Save the record before uploading.</span>
