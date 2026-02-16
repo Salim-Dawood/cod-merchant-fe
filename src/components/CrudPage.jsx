@@ -151,7 +151,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [infoPermissions, setInfoPermissions] = useState([]);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [selectOpen, setSelectOpen] = useState({});
   const [showPasswords, setShowPasswords] = useState({});
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
@@ -371,11 +370,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 item.email ||
                 item.key_name ||
                 `#${item.id}`;
-              const logoUrl = field.ref === 'branches' && item.logo_url ? String(item.logo_url) : '';
               return {
                 value: String(item.id),
-                label: `${labelValue} (#${item.id})`,
-                logo_url: logoUrl
+                label: `${labelValue} (#${item.id})`
               };
             });
             return [field.key, options];
@@ -1650,87 +1647,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               if (field.type === 'select' || field.ref) {
                 const options = field.ref ? refOptions[field.key] || [] : field.options || [];
                 const hasError = Boolean(fieldErrors[field.key]);
-                if (field.ref === 'branches') {
-                  const isOpen = Boolean(selectOpen[field.key]);
-                  const selectedValue = form[field.key] ?? '';
-                  const selectedOption = options.find(
-                    (option) => String(option.value || option) === String(selectedValue)
-                  );
-                  const selectedLabel = selectedOption?.label || 'Select';
-                  const selectedLogo = selectedOption?.logo_url || '';
-                  return (
-                    <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)] md:col-span-2">
-                      {field.label}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          className={`flex h-11 w-full items-center justify-between rounded-2xl border bg-[var(--surface)] px-4 text-sm text-[var(--ink)] shadow-sm focus-visible:outline-none focus-visible:ring-2 ${
-                            hasError
-                              ? 'border-red-300 focus-visible:ring-red-200'
-                              : 'border-[var(--border)] focus-visible:ring-[var(--accent)]'
-                          }`}
-                          onClick={() =>
-                            setSelectOpen((prev) => ({ ...prev, [field.key]: !isOpen }))
-                          }
-                        >
-                          <span className="flex items-center gap-2">
-                            {selectedLogo && (
-                              <img
-                                src={selectedLogo}
-                                alt={selectedLabel}
-                                className="h-5 w-5 rounded-full object-cover"
-                              />
-                            )}
-                            <span>{selectedLabel}</span>
-                          </span>
-                          <span className="text-xs text-[var(--muted-ink)]">{isOpen ? 'Hide' : 'Show'}</span>
-                        </button>
-                        {isOpen && (
-                          <div className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-[var(--muted-ink)] hover:bg-[var(--surface-soft)]"
-                              onClick={() => {
-                                handleChange(field.key, '');
-                                setSelectOpen((prev) => ({ ...prev, [field.key]: false }));
-                              }}
-                            >
-                              Select
-                            </button>
-                            {options.map((option) => {
-                              const value = option.value || option;
-                              const label = option.label || option;
-                              const logoUrl = option.logo_url || '';
-                              return (
-                                <button
-                                  type="button"
-                                  key={value}
-                                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-[var(--ink)] hover:bg-[var(--surface-soft)]"
-                                  onClick={() => {
-                                    handleChange(field.key, String(value));
-                                    setSelectOpen((prev) => ({ ...prev, [field.key]: false }));
-                                  }}
-                                >
-                                  {logoUrl && (
-                                    <img
-                                      src={logoUrl}
-                                      alt={label}
-                                      className="h-5 w-5 rounded-full object-cover"
-                                    />
-                                  )}
-                                  <span>{label}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                      {hasError && (
-                        <span className="text-xs text-red-600">{fieldErrors[field.key]}</span>
-                      )}
-                    </label>
-                  );
-                }
                 return (
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)] md:col-span-2">
                     {field.label}
