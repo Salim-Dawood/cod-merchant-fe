@@ -1368,27 +1368,27 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             )}
                           </div>
                           <div className="cell-clamp">
-                            <div className="flex flex-wrap items-center gap-2 font-medium text-[var(--ink)]">
-                              <span>{avatarText}</span>
+                            <div className="font-medium text-[var(--ink)]">
+                              {avatarText}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted-ink)]">
+                              <span>ID #{row.id}</span>
                               {isUserResource && roleLabel && (
                                 <Badge
                                   title={roleLabel}
-                                  className="border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px]"
+                                  className="flex h-5 w-5 items-center justify-center border border-[var(--border)] bg-[var(--surface)] px-0 text-[9px] uppercase"
                                 >
-                                  {roleLabel}
+                                  {roleLabel.slice(0, 1)}
                                 </Badge>
                               )}
                               {isUserResource && branchLabel && (
                                 <Badge
                                   title={branchLabel}
-                                  className="border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px]"
+                                  className="flex h-5 w-5 items-center justify-center border border-[var(--border)] bg-[var(--surface)] px-0 text-[9px] uppercase"
                                 >
-                                  Branch: {branchLabel}
+                                  {branchLabel.slice(0, 1)}
                                 </Badge>
                               )}
-                            </div>
-                            <div className="text-xs text-[var(--muted-ink)]">
-                              ID #{row.id}
                             </div>
                           </div>
                         </div>
