@@ -227,6 +227,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           clientBranches.map((branch) => ({
             value: String(branch.id),
             merchant_id: String(branch.merchant_id ?? ''),
+            logo_url: branch.logo_url ? String(branch.logo_url) : '',
             label: `${branch.name || `Branch #${branch.id}`} • ${
               merchantLabelMap.get(String(branch.merchant_id)) || `#${branch.merchant_id}`
             }`
@@ -1201,34 +1202,81 @@ export default function CrudPage({ resource, permissions = [], authType, profile
             </label>
             <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
               <span>Branch</span>
-              <select
-                className="h-9 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
-                value={selectedBranchId}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setSelectedBranchId(value);
-                  if (!value) {
-                    setSelectedCategoryId('');
-                  }
-                  const params = new URLSearchParams(location.search);
-                  if (value) {
-                    params.set('branch_id', value);
-                  } else {
-                    params.delete('branch_id');
-                  }
-                  if (!value) {
-                    params.delete('category_id');
-                  }
-                  navigate({ pathname: location.pathname, search: params.toString() });
-                }}
-              >
-                <option value="">All</option>
-                {visibleBranchOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              {(() => {
+                const key = 'filter_branch';
+                const isOpen = Boolean(selectOpen[key]);
+                const selectedOption = visibleBranchOptions.find(
+                  (option) => String(option.value) === String(selectedBranchId)
+                );
+                const selectedLabel = selectedOption?.label || 'All';
+                const selectedLogo = selectedOption?.logo_url || '';
+                return (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="flex h-9 min-w-[200px] items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
+                      onClick={() =>
+                        setSelectOpen((prev) => ({ ...prev, [key]: !isOpen }))
+                      }
+                    >
+                      <span className="flex items-center gap-2">
+                        {selectedLogo && (
+                          <img
+                            src={selectedLogo}
+                            alt={selectedLabel}
+                            className="h-4 w-4 rounded-full object-cover"
+                          />
+                        )}
+                        <span>{selectedLabel}</span>
+                      </span>
+                      <span className="text-xs text-[var(--muted-ink)]">{isOpen ? 'Hide' : 'Show'}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-[var(--muted-ink)] hover:bg-[var(--surface-soft)]"
+                          onClick={() => {
+                            setSelectedBranchId('');
+                            setSelectedCategoryId('');
+                            const params = new URLSearchParams(location.search);
+                            params.delete('branch_id');
+                            params.delete('category_id');
+                            navigate({ pathname: location.pathname, search: params.toString() });
+                            setSelectOpen((prev) => ({ ...prev, [key]: false }));
+                          }}
+                        >
+                          All
+                        </button>
+                        {visibleBranchOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-[var(--ink)] hover:bg-[var(--surface-soft)]"
+                            onClick={() => {
+                              const value = String(option.value);
+                              setSelectedBranchId(value);
+                              const params = new URLSearchParams(location.search);
+                              params.set('branch_id', value);
+                              navigate({ pathname: location.pathname, search: params.toString() });
+                              setSelectOpen((prev) => ({ ...prev, [key]: false }));
+                            }}
+                          >
+                            {option.logo_url && (
+                              <img
+                                src={option.logo_url}
+                                alt={option.label}
+                                className="h-4 w-4 rounded-full object-cover"
+                              />
+                            )}
+                            <span>{option.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </label>
             {resource.key === 'products' && (
               <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
