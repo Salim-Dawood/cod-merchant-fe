@@ -1337,6 +1337,17 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                     || fields[0]?.key;
                   const avatarText = primaryField ? formatValue(row[primaryField]) : `Record ${row.id}`;
                   const avatarUrl = row.avatar_url ? String(row.avatar_url) : '';
+                  const isUserResource = resource.key === 'users';
+                  const branchOption = isUserResource
+                    ? refOptions.branch_id?.find((option) => String(option.value) === String(row.branch_id))
+                    : null;
+                  const roleOption = isUserResource
+                    ? refOptions.merchant_role_id?.find((option) => String(option.value) === String(row.merchant_role_id))
+                    : null;
+                  const compactOptionLabel = (label) =>
+                    label ? String(label).replace(/\s*\(#\d+\)\s*$/, '') : '';
+                  const branchLabel = compactOptionLabel(branchOption?.label);
+                  const roleLabel = compactOptionLabel(roleOption?.label);
 
                   return (
                     <TableRow key={row.id}>
@@ -1357,8 +1368,24 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             )}
                           </div>
                           <div className="cell-clamp">
-                            <div className="font-medium text-[var(--ink)]">
-                              {avatarText}
+                            <div className="flex flex-wrap items-center gap-2 font-medium text-[var(--ink)]">
+                              <span>{avatarText}</span>
+                              {isUserResource && roleLabel && (
+                                <Badge
+                                  title={roleLabel}
+                                  className="border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px]"
+                                >
+                                  {roleLabel}
+                                </Badge>
+                              )}
+                              {isUserResource && branchLabel && (
+                                <Badge
+                                  title={branchLabel}
+                                  className="border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px]"
+                                >
+                                  Branch: {branchLabel}
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-xs text-[var(--muted-ink)]">
                               ID #{row.id}
