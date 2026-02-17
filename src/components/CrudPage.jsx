@@ -1648,16 +1648,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               Next
             </button>
           </div>
-          <label className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <span>Rows</span>
-            <select
-              className="h-7 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2"
-              value={pageSize}
-              onChange={(event) => setPageSize(Number(event.target.value))}
-            >
-              <option value={10}>10</option>
-            </select>
-          </label>
+            <span className="text-xs text-[var(--muted-ink)]">{pageSize}</span>
+          </div>
         </div>
       </div>
 
