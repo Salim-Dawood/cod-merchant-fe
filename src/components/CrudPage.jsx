@@ -741,11 +741,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
 
   const headers = useMemo(() => {
     const base = ['id', ...fields.map((field) => field.key)];
-    if (resource.key === 'users') {
-      const hidden = new Set(['avatar_url', 'password', 'merchant_id', 'branch_id']);
-      return base.filter((key) => !hidden.has(key));
-    }
-    return base;
+    const hiddenByResource = {
+      users: ['avatar_url', 'password', 'merchant_id', 'branch_id'],
+      branches: ['merchant_id', 'parent_branch_id', 'flag_url'],
+      'branch-roles': ['branch_id', 'is_system'],
+      permissions: ['group_name'],
+      products: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug'],
+      categories: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug']
+    };
+    const hidden = new Set(hiddenByResource[resource.key] || []);
+    return base.filter((key) => !hidden.has(key));
   }, [fields, resource.key]);
   const tableHeaders = useMemo(
     () => (roleConfig ? [...headers, 'permission_count'] : headers),
