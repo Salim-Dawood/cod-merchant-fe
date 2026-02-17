@@ -1137,7 +1137,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col space-y-0">
+    <div className="flex flex-col space-y-0">
       <div className="surface-panel rise-fade rounded-[24px] px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
