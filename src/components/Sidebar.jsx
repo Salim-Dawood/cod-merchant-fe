@@ -185,32 +185,6 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
-              <p className="font-display text-[12px] font-semibold uppercase tracking-[0.5em] text-[var(--ink)]">
-                Storefront
-              </p>
-              <p className="mt-2 leading-relaxed text-[13px]">
-                Curate branches, manage teams, and keep merchant experiences on brand.
-              </p>
-            </div>
-
-            <div className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
-              <div>
-                <p className="font-display text-[12px] uppercase tracking-[0.5em]">Workspace</p>
-                <p className="mt-1 text-[13px] font-semibold text-[var(--ink)] tracking-[0.02em]">
-                  Regional Ops
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
-                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2.5 py-1">
-                  Q1 Cycle
-                </span>
-                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2.5 py-1">
-                  Audit Ready
-                </span>
-              </div>
-            </div>
-
             <nav className="space-y-6">
               {visibleSections.map((section) => {
                 const sectionLinks =

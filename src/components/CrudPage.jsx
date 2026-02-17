@@ -1146,13 +1146,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               {stats.total} total • Highest ID {stats.maxId || '-'}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
             <Input
               type="text"
               placeholder="Search by any field..."
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="h-9 w-full max-w-md"
+              className="h-9 w-full max-w-md md:w-72"
             />
             <Badge className="border border-[var(--border)] bg-[var(--surface)]">
               {loading ? 'Loading' : `${filteredRows.length} rows`}
@@ -1281,7 +1281,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         )}
       </div>
 
-      <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px]">
+      <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px] p-0">
         <div className="no-scrollbar min-h-0 flex-1 overflow-auto">
           {isClient && resource.key == 'products' ? (
             <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
