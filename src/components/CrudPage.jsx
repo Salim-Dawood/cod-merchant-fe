@@ -193,7 +193,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [clientProducts, setClientProducts] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState({});
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -1594,7 +1594,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               value={pageSize}
               onChange={(event) => setPageSize(Number(event.target.value))}
             >
-              <option value={5}>5</option>
+              <option value={10}>10</option>
             </select>
           </label>
         </div>
