@@ -750,7 +750,17 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       categories: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug']
     };
     const hidden = new Set(hiddenByResource[resource.key] || []);
-    return base.filter((key) => !hidden.has(key));
+    const filtered = base.filter((key) => !hidden.has(key));
+    if (resource.key === 'branches' && !filtered.includes('flag_display')) {
+      filtered.splice(1, 0, 'flag_display');
+    }
+    if (resource.key === 'users' && !filtered.includes('flag_display')) {
+      filtered.splice(1, 0, 'flag_display');
+    }
+    if (resource.key === 'branch-roles' && !filtered.includes('flag_display')) {
+      filtered.splice(1, 0, 'flag_display');
+    }
+    return filtered;
   }, [fields, resource.key]);
   const tableHeaders = useMemo(
     () => (roleConfig ? [...headers, 'permission_count'] : headers),
@@ -844,6 +854,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         if (key === 'permission_count') {
           return String((permissionMap[row.id] || []).length).includes(search);
         }
+        if (key === 'flag_display') {
+          if (resource.key === 'branches') {
+            return String(row.name || row.code || row.id || '').toLowerCase().includes(search);
+          }
+          if (resource.key === 'branch-roles' || resource.key === 'users') {
+            const label = branchLabelMap[String(row.branch_id)] || '';
+            return String(label).toLowerCase().includes(search);
+          }
+          return false;
+        }
         return String(row[key] ?? '').toLowerCase().includes(search);
       })
     );
@@ -852,6 +872,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     query,
     tableHeaders,
     permissionMap,
+    branchLabelMap,
     isClient,
     selectedMerchantId,
     selectedBranchId,
@@ -896,6 +917,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       const value = option.value ?? option;
       const label = option.label ?? option;
       map[String(value)] = label;
+    });
+    return map;
+  }, [refOptions]);
+
+  const branchIdFlagMap = useMemo(() => {
+    const options = refOptions.branch_id || [];
+    const map = {};
+    options.forEach((option) => {
+      const value = option.value ?? option;
+      map[String(value)] = option.flag_url || '';
     });
     return map;
   }, [refOptions]);
@@ -1331,6 +1362,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                     row.branch_id !== undefined
                       ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
                       : 'Unassigned';
+                  const branchFlagUrl = branchIdFlagMap[String(row.branch_id)] || '';
 
                   return (
                     <div
@@ -1364,7 +1396,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                               {row.is_active ? 'Active' : 'Inactive'}
                             </Badge>
                             <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                              Branch: {branchLabel}
+                              <span className="inline-flex items-center gap-2">
+                                <FlagChip title={branchLabel} url={branchFlagUrl} />
+                                {branchLabel}
+                              </span>
                             </Badge>
                             <Badge className="border border-[var(--border)] bg-[var(--surface)]">
                               Images: {images.length}
@@ -1403,7 +1438,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 </TableHead>
                 {tableHeaders.map((header) => (
                   <TableHead key={header} className="text-white">
-                    {header}
+                    {header === 'flag_display' ? 'flag' : header}
                   </TableHead>
                 ))}
                 <TableHead className="text-white">Actions</TableHead>
@@ -1440,6 +1475,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   const avatarText = primaryField ? formatValue(row[primaryField]) : `Record ${row.id}`;
                   const avatarUrl = row.avatar_url ? String(row.avatar_url) : '';
                   const isUserResource = resource.key === 'users';
+                  const isBranchResource = resource.key === 'branches';
+                  const isBranchRoleResource = resource.key === 'branch-roles';
                   const branchOption = isUserResource
                     ? refOptions.branch_id?.find((option) => String(option.value) === String(row.branch_id))
                     : null;
@@ -1447,6 +1484,23 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                     label ? String(label).replace(/\s*\(#\d+\)\s*$/, '') : '';
                   const branchLabel = compactOptionLabel(branchOption?.label);
                   const branchFlagUrl = branchOption?.flag_url || '';
+                  const branchRoleLabel = isBranchRoleResource
+                    ? compactOptionLabel(branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`)
+                    : '';
+                  const branchFlagFromRow = isBranchResource ? String(row.flag_url || '') : '';
+                  const branchFlagFromRole = isBranchRoleResource ? (branchIdFlagMap[String(row.branch_id)] || '') : '';
+                  const flagLabel = isBranchResource
+                    ? (row.name || row.code || `#${row.id}`)
+                    : isBranchRoleResource
+                    ? branchRoleLabel
+                    : branchLabel;
+                  const flagUrl = isBranchResource ? branchFlagFromRow : isBranchRoleResource ? branchFlagFromRole : branchFlagUrl;
+                  const branchFlagCell = (
+                    <div className="flex items-center gap-2">
+                      <FlagChip title={flagLabel || 'Branch'} url={flagUrl} />
+                      <span className="text-xs text-[var(--muted-ink)]">{flagLabel || '-'}</span>
+                    </div>
+                  );
 
                   return (
                     <TableRow key={row.id}>
@@ -1472,16 +1526,17 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted-ink)]">
                               <span>ID #{row.id}</span>
-                              {isUserResource && branchLabel && (
-                                <FlagChip title={branchLabel} url={branchFlagUrl} />
-                              )}
                             </div>
                           </div>
                         </div>
                       </TableCell>
                       {tableHeaders.map((header) => (
                         <TableCell key={`${row.id}-${header}`} data-label={header}>
-                          {header === 'permission_count' ? (
+                          {header === 'flag_display' ? (
+                            (isUserResource || isBranchResource || isBranchRoleResource)
+                              ? branchFlagCell
+                              : <span className="cell-clamp">-</span>
+                          ) : header === 'permission_count' ? (
                             <Badge className="border border-[var(--border)] bg-[var(--surface)]">
                               {permissionCount(row.id)}
                             </Badge>
