@@ -1298,7 +1298,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   No products found.
                 </div>
               ) : (
-                paginatedRows.map((row) => {
+                <>
+                {paginatedRows.map((row) => {
                   const statusValue = row.status ? String(row.status).toLowerCase() : '';
                   const statusClass =
                     statusValue === 'active'
@@ -1557,7 +1558,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                       </TableCell>
                     </TableRow>
                   );
-                })
+                })}
+                {paginatedRows.length > 0 && paginatedRows.length < pageSize &&
+                  Array.from({ length: pageSize - paginatedRows.length }).map((_, index) => (
+                    <TableRow key={`empty-${index}`}>
+                      <TableCell colSpan={headers.length + 2} className="h-16">
+                        &nbsp;
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
               )}
             </TableBody>
           </Table>
