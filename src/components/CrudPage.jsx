@@ -780,6 +780,27 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     return { total, maxId, statusCounts };
   }, [rows, statusKey]);
 
+  const branchLabelMap = useMemo(() => {
+    const options = refOptions.branch_id || [];
+    const map = {};
+    options.forEach((option) => {
+      const value = option.value ?? option;
+      const label = option.label ?? option;
+      map[String(value)] = label;
+    });
+    return map;
+  }, [refOptions]);
+
+  const branchIdFlagMap = useMemo(() => {
+    const options = refOptions.branch_id || [];
+    const map = {};
+    options.forEach((option) => {
+      const value = option.value ?? option;
+      map[String(value)] = option.flag_url || '';
+    });
+    return map;
+  }, [refOptions]);
+
   const filteredRows = useMemo(() => {
     let baseRows = rows;
     if (isClient) {
@@ -909,27 +930,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     });
     return map;
   }, [categoryOptions]);
-
-  const branchLabelMap = useMemo(() => {
-    const options = refOptions.branch_id || [];
-    const map = {};
-    options.forEach((option) => {
-      const value = option.value ?? option;
-      const label = option.label ?? option;
-      map[String(value)] = label;
-    });
-    return map;
-  }, [refOptions]);
-
-  const branchIdFlagMap = useMemo(() => {
-    const options = refOptions.branch_id || [];
-    const map = {};
-    options.forEach((option) => {
-      const value = option.value ?? option;
-      map[String(value)] = option.flag_url || '';
-    });
-    return map;
-  }, [refOptions]);
 
   const scopedProductIds = useMemo(() => {
     if (!isClient) {
