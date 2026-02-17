@@ -1378,7 +1378,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                       </div>
                     </div>
                   );
-                })
+                })}
+                </>
               )}
             </div>
           ) : (
