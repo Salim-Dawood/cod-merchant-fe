@@ -1137,7 +1137,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col space-y-3">
+    <div className="flex h-full min-h-0 flex-col space-y-0">
       <div className="surface-panel rise-fade rounded-[24px] px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -1563,7 +1563,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           </Table>
           )}
         </div>
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-3 py-2 text-xs text-[var(--muted-ink)]">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] p-0 text-xs text-[var(--muted-ink)]">
           <div className="flex items-center gap-2">
             <span>Page {currentPage} / {totalPages}</span>
             <button
