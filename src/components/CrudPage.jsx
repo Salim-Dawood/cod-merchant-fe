@@ -739,7 +739,14 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     setDeleteTarget(null);
   };
 
-  const headers = useMemo(() => ['id', ...fields.map((field) => field.key)], [fields]);
+  const headers = useMemo(() => {
+    const base = ['id', ...fields.map((field) => field.key)];
+    if (resource.key === 'users') {
+      const hidden = new Set(['avatar_url', 'password', 'merchant_id', 'branch_id']);
+      return base.filter((key) => !hidden.has(key));
+    }
+    return base;
+  }, [fields, resource.key]);
   const tableHeaders = useMemo(
     () => (roleConfig ? [...headers, 'permission_count'] : headers),
     [headers, roleConfig]
@@ -1154,9 +1161,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               onChange={(event) => setQuery(event.target.value)}
               className="h-9 w-full max-w-md md:w-72"
             />
-            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-              {loading ? 'Loading' : `${filteredRows.length} rows`}
-            </Badge>
+            <span className="text-xs text-[var(--muted-ink)]">
+              {loading ? 'Loading' : String(filteredRows.length)}
+            </span>
             {canWrite && (
               (isMerchant || !resource.permissions?.create ? (
                 <Button size="sm" onClick={openCreate}>New</Button>
