@@ -1281,8 +1281,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         )}
       </div>
 
-      <div className="soft-panel flex min-h-0 flex-col rounded-[24px] p-0">
-        <div className="no-scrollbar min-h-0">
+      <div className="soft-panel rounded-[24px] p-0">
+        <div>
           {isClient && resource.key == 'products' ? (
             <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
               {loading ? (
@@ -1561,14 +1561,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                     </TableRow>
                   );
                 })}
-                {paginatedRows.length > 0 && paginatedRows.length < pageSize &&
-                  Array.from({ length: pageSize - paginatedRows.length }).map((_, index) => (
-                    <TableRow key={`empty-${index}`}>
-                      <TableCell colSpan={headers.length + 2} className="h-16">
-                        &nbsp;
-                      </TableCell>
-                    </TableRow>
-                  ))}
                 </>
               )}
             </TableBody>
