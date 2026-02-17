@@ -1146,31 +1146,31 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               {stats.total} total • Highest ID {stats.maxId || '-'}
             </p>
           </div>
-          {canWrite && (
-            (isMerchant || !resource.permissions?.create ? (
-              <Button size="sm" onClick={openCreate}>New</Button>
-            ) : (
-              permissions.includes(resource.permissions.create) && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              type="text"
+              placeholder="Search by any field..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-9 w-full max-w-md"
+            />
+            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+              {loading ? 'Loading' : `${filteredRows.length} rows`}
+            </Badge>
+            {canWrite && (
+              (isMerchant || !resource.permissions?.create ? (
                 <Button size="sm" onClick={openCreate}>New</Button>
-              )
-            ))
-          )}
+              ) : (
+                permissions.includes(resource.permissions.create) && (
+                  <Button size="sm" onClick={openCreate}>New</Button>
+                )
+              ))
+            )}
+          </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-1 items-center gap-3">
-          <Input
-            type="text"
-            placeholder="Search by any field..."
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="max-w-md h-9"
-          />
-          <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-            {loading ? 'Loading' : `${filteredRows.length} rows`}
-          </Badge>
-        </div>
         {isClient && (merchantOptions.length > 0 || branchOptions.length > 0) && (
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
