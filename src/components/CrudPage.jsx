@@ -1411,7 +1411,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   <TableCell colSpan={headers.length + 2}>No data</TableCell>
                 </TableRow>
               ) : (
-                paginatedRows.map((row) => {
+                <>
+                {paginatedRows.map((row) => {
                   const statusValue = row.status ? String(row.status).toLowerCase() : '';
                   const statusClass =
                     statusValue === 'active'
