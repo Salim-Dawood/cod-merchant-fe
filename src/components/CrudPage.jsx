@@ -1281,8 +1281,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         )}
       </div>
 
-      <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px] p-0">
-        <div className="no-scrollbar min-h-0 flex-1 overflow-auto">
+      <div className="soft-panel flex min-h-0 flex-col rounded-[24px] p-0">
+        <div className="no-scrollbar min-h-0">
           {isClient && resource.key == 'products' ? (
             <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
               {loading ? (
