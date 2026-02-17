@@ -751,15 +751,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     };
     const hidden = new Set(hiddenByResource[resource.key] || []);
     const filtered = base.filter((key) => !hidden.has(key));
-    if (resource.key === 'branches' && !filtered.includes('flag_display')) {
-      filtered.splice(1, 0, 'flag_display');
-    }
-    if (resource.key === 'users' && !filtered.includes('flag_display')) {
-      filtered.splice(1, 0, 'flag_display');
-    }
-    if (resource.key === 'branch-roles' && !filtered.includes('flag_display')) {
-      filtered.splice(1, 0, 'flag_display');
-    }
     return filtered;
   }, [fields, resource.key]);
   const tableHeaders = useMemo(
@@ -1526,6 +1517,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted-ink)]">
                               <span>ID #{row.id}</span>
+                              {isUserResource && branchLabel && (
+                                <FlagChip title={branchLabel} url={branchFlagUrl} />
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1688,12 +1682,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   const label = option?.label || option;
                   return typeof label === 'string' && /manager|support/i.test(label);
                 });
+                const hasFlagOptions = options.some((option) => Boolean(option?.flag_url));
                 const selectedOption =
                   options.find((option) => String(option.value ?? option) === String(form[field.key] ?? '')) || null;
                 return (
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)] md:col-span-2">
                     {field.label}
-                    {hasRoleOptions ? (
+                    {hasRoleOptions || (field.ref === 'branches' && hasFlagOptions) ? (
                       <div className="relative">
                         <button
                           type="button"
@@ -1707,7 +1702,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                           }
                         >
                           <span className="flex items-center gap-2">
-                            <FlagChip title={selectedOption?.label || 'Role flag'} url={selectedOption?.flag_url} />
+                            <FlagChip title={selectedOption?.label || 'Flag'} url={selectedOption?.flag_url} />
                             <span>{selectedOption?.label || selectedOption || 'Select'}</span>
                           </span>
                           <span className="text-xs text-[var(--muted-ink)]">
