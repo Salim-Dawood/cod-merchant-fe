@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
@@ -35,41 +35,31 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
   const avatarStorageKey = profile?.id
     ? `profile_avatar_${authType === 'merchant' ? 'users' : 'platform-admins'}_${profile.id}`
     : '';
-  const [avatarUrl, setAvatarUrl] = useState(() => {
-    const fromProfile = profile?.avatar_url ? String(profile.avatar_url) : '';
-    if (fromProfile || !avatarStorageKey) {
-      return fromProfile;
+  const [avatarOverrideById, setAvatarOverrideById] = useState({});
+  const storedAvatarUrl = useMemo(() => {
+    if (!avatarStorageKey) {
+      return '';
     }
     try {
       return localStorage.getItem(avatarStorageKey) || '';
     } catch {
       return '';
     }
-  });
+  }, [avatarStorageKey]);
+  const profileAvatarUrl = profile?.avatar_url ? String(profile.avatar_url) : '';
+  const avatarOverride = profile?.id ? avatarOverrideById[String(profile.id)] || '' : '';
+  const avatarUrl = profileAvatarUrl || avatarOverride || storedAvatarUrl;
 
   useEffect(() => {
-    const fromProfile = profile?.avatar_url ? String(profile.avatar_url) : '';
-    if (fromProfile) {
-      setAvatarUrl(fromProfile);
-      if (avatarStorageKey) {
-        try {
-          localStorage.setItem(avatarStorageKey, fromProfile);
-        } catch {
-          // ignore storage failures
-        }
-      }
-      return;
-    }
-    if (!avatarStorageKey) {
-      setAvatarUrl('');
+    if (!avatarStorageKey || !profileAvatarUrl) {
       return;
     }
     try {
-      setAvatarUrl(localStorage.getItem(avatarStorageKey) || '');
+      localStorage.setItem(avatarStorageKey, profileAvatarUrl);
     } catch {
-      setAvatarUrl('');
+      // ignore storage failures
     }
-  }, [profile?.avatar_url, avatarStorageKey]);
+  }, [avatarStorageKey, profileAvatarUrl]);
 
   useEffect(() => {
     const handleAvatarUpdate = (event) => {
@@ -77,7 +67,10 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
         return;
       }
       const nextUrl = event.detail.avatar_url || '';
-      setAvatarUrl(nextUrl);
+      setAvatarOverrideById((prev) => ({
+        ...prev,
+        [String(event.detail.id)]: nextUrl
+      }));
       if (avatarStorageKey) {
         try {
           if (nextUrl) {
@@ -92,7 +85,7 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
     };
     window.addEventListener('profile-avatar-updated', handleAvatarUpdate);
     return () => window.removeEventListener('profile-avatar-updated', handleAvatarUpdate);
-  }, [profile?.id]);
+  }, [profile?.id, avatarStorageKey]);
 
   const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
   const isClient = authType === 'merchant' && roleName === 'client';

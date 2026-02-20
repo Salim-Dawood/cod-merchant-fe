@@ -1757,7 +1757,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 return (
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)] md:col-span-2">
                     {field.label}
-                    {hasRoleOptions || (field.ref === 'branches' && hasFlagOptions) ? (
+                    {hasRoleOptions || field.ref === 'branches' ? (
                       <div className="relative">
                         <button
                           type="button"
