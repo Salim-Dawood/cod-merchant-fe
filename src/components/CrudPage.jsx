@@ -398,6 +398,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               };
               if (field.ref === 'branches') {
                 option.flag_url = item.flag_url || '';
+                option.merchant_id = item.merchant_id;
               }
               if (field.ref === 'branch-roles') {
                 option.branch_id = item.branch_id;
@@ -791,6 +792,66 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     });
     return map;
   }, [refOptions]);
+  const branchIdMerchantMap = useMemo(() => {
+    const options = refOptions.branch_id || [];
+    const map = {};
+    options.forEach((option) => {
+      const value = option.value ?? option;
+      if (option?.merchant_id !== undefined && option?.merchant_id !== null) {
+        map[String(value)] = String(option.merchant_id);
+      }
+    });
+    return map;
+  }, [refOptions]);
+  const filteredUserBranchOptions = useMemo(() => {
+    const options = refOptions.branch_id || [];
+    const merchantId = String(form.merchant_id ?? '');
+    if (!merchantId) {
+      return options;
+    }
+    return options.filter(
+      (option) => String(option?.merchant_id ?? branchIdMerchantMap[String(option.value ?? option)] ?? '') === merchantId
+    );
+  }, [refOptions, form.merchant_id, branchIdMerchantMap]);
+  const filteredUserRoleOptions = useMemo(() => {
+    const options = refOptions.merchant_role_id || [];
+    const merchantId = String(form.merchant_id ?? '');
+    if (!merchantId) {
+      return options;
+    }
+    return options.filter((option) => {
+      const roleBranchId = String(option?.branch_id ?? '');
+      const roleMerchantId = branchIdMerchantMap[roleBranchId];
+      return roleMerchantId && String(roleMerchantId) === merchantId;
+    });
+  }, [refOptions, form.merchant_id, branchIdMerchantMap]);
+
+  useEffect(() => {
+    if (resource.key !== 'users') {
+      return;
+    }
+    const nextBranchOptions = filteredUserBranchOptions;
+    const nextRoleOptions = filteredUserRoleOptions;
+    const branchValue = String(form.branch_id ?? '');
+    const roleValue = String(form.merchant_role_id ?? '');
+    const branchAllowed =
+      !branchValue || nextBranchOptions.some((option) => String(option.value ?? option) === branchValue);
+    const roleAllowed =
+      !roleValue || nextRoleOptions.some((option) => String(option.value ?? option) === roleValue);
+    if (branchAllowed && roleAllowed) {
+      return;
+    }
+    setForm((prev) => {
+      const next = { ...prev };
+      if (!branchAllowed) {
+        next.branch_id = '';
+      }
+      if (!roleAllowed) {
+        next.merchant_role_id = '';
+      }
+      return next;
+    });
+  }, [resource.key, form.branch_id, form.merchant_role_id, filteredUserBranchOptions, filteredUserRoleOptions]);
 
   const filteredRows = useMemo(() => {
     let baseRows = rows;
@@ -1678,7 +1739,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 return null;
               }
               if (field.type === 'select' || field.ref) {
-                const options = field.ref ? refOptions[field.key] || [] : field.options || [];
+                let options = field.ref ? refOptions[field.key] || [] : field.options || [];
+                if (resource.key === 'users' && field.key === 'branch_id') {
+                  options = filteredUserBranchOptions;
+                }
+                if (resource.key === 'users' && field.key === 'merchant_role_id') {
+                  options = filteredUserRoleOptions;
+                }
                 const hasError = Boolean(fieldErrors[field.key]);
                 const hasRoleOptions = options.some((option) => {
                   const label = option?.label || option;
