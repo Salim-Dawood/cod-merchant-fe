@@ -16,7 +16,20 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Request failed: ${response.status}`);
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+    }
+    const error = new Error(
+      (data && (data.message || data.error || data.title)) || text || `Request failed: ${response.status}`
+    );
+    error.status = response.status;
+    error.data = data || text || null;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -47,13 +60,22 @@ export const auth = {
     setAuthTokens('merchant', data);
     return data;
   },
+  loginClient: async (email, password) => {
+    const data = await request('/client/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    clearAuthTokens('platform');
+    clearAuthTokens('merchant');
+    return data;
+  },
   register: (payload) =>
     request('/merchant/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
   registerClient: (payload) =>
-    request('/merchant/auth/register-client', {
+    request('/client/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
@@ -100,5 +122,15 @@ export const auth = {
     });
     clearAuthTokens('merchant');
     return data;
-  }
+  },
+  forgotPassword: (actor, email) =>
+    request(`/${actor}/auth/forgot-password`, {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    }),
+  resetPassword: (actor, token, password) =>
+    request(`/${actor}/auth/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ token, password })
+    })
 };

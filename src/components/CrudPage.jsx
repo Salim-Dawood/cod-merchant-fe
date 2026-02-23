@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api, API_BASE_URL } from '../lib/api';
+import { auth } from '../lib/auth';
 import { getAccessToken } from '../lib/session';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -517,6 +518,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       } else {
         next[field.key] = value ?? '';
       }
+      if (field.type === 'password') {
+        next[field.key] = '';
+      }
     });
     setForm(next);
     setFieldErrors({});
@@ -560,6 +564,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     const nextErrors = {};
     fields.forEach((field) => {
       if (field.readOnly) {
+        return;
+      }
+      if (editRow && field.type === 'password') {
         return;
       }
       if (!field.required || field.type === 'boolean') {
@@ -723,6 +730,32 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       await load();
     } catch (err) {
       setError(err.message || 'Failed to delete');
+    }
+  };
+
+  const handleSendResetPassword = async (row) => {
+    const email = row?.email ? String(row.email).trim() : '';
+    if (!email) {
+      setError('Selected record does not have an email.');
+      return;
+    }
+    const actor =
+      resource.key === 'platform-admins'
+        ? 'platform'
+        : resource.key === 'users'
+        ? 'merchant'
+        : resource.key === 'platform-clients'
+        ? 'client'
+        : '';
+    if (!actor) {
+      return;
+    }
+    try {
+      setError('');
+      await auth.forgotPassword(actor, email);
+      window.alert(`Password reset link sent to ${email} (or logged by backend if SMTP is not configured).`);
+    } catch (err) {
+      setError(err?.message || 'Failed to send reset password link');
     }
   };
 
@@ -1662,6 +1695,11 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                           )}
                           {canWrite && (
                             <>
+                              {(resource.key === 'users' || resource.key === 'platform-admins') && row.email && (
+                                <Button size="sm" variant="outline" onClick={() => handleSendResetPassword(row)}>
+                                  Reset Password
+                                </Button>
+                              )}
                               {(isMerchant ||
                                 !resource.permissions?.update ||
                                 permissions.includes(resource.permissions.update)) && (
@@ -1736,6 +1774,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           <div className="grid gap-4 md:grid-cols-2">
             {fields.map((field) => {
               if (field.readOnly) {
+                return null;
+              }
+              if (editRow && field.type === 'password') {
                 return null;
               }
               if (field.type === 'select' || field.ref) {

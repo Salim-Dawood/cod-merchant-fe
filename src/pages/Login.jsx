@@ -1,13 +1,15 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { auth } from '../lib/auth';
 
 export default function LoginPage({ onSuccess }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [merchantName, setMerchantName] = useState('');
   const [merchantEmail, setMerchantEmail] = useState('');
   const [merchantPhone, setMerchantPhone] = useState('');
@@ -21,12 +23,47 @@ export default function LoginPage({ onSuccess }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [resetActor, setResetActor] = useState('');
+  const [resetToken, setResetToken] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const isReset = params.get('reset') === '1';
+    const actor = params.get('actor') || '';
+    const token = params.get('token') || '';
+    if (isReset && token && ['platform', 'merchant', 'client'].includes(actor)) {
+      setMode('reset-password');
+      setResetActor(actor);
+      setResetToken(token);
+      setPassword('');
+      setConfirmPassword('');
+      setError('');
+      setSuccess('');
+      return;
+    }
+    if (mode === 'reset-password') {
+      setMode('admin');
+      setResetActor('');
+      setResetToken('');
+    }
+  }, [location.search, mode]);
+
+  const loginActor = useMemo(() => {
+    if (mode === 'merchant') {
+      return 'merchant';
+    }
+    if (mode === 'client') {
+      return 'client';
+    }
+    return 'platform';
+  }, [mode]);
 
   const validateForm = () => {
     const nextErrors = {};
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+    const isResetMode = mode === 'reset-password';
 
     if (mode === 'register') {
       if (!merchantName.trim()) {
@@ -34,12 +71,15 @@ export default function LoginPage({ onSuccess }) {
       }
     }
 
-    if (!trimmedEmail || !emailValid) {
+    if (!isResetMode && (!trimmedEmail || !emailValid)) {
       nextErrors.email = 'Enter a valid email address.';
     }
 
     if (trimmedPassword.length < 6) {
       nextErrors.password = 'Password must be at least 6 characters.';
+    }
+    if (isResetMode && confirmPassword.trim() !== trimmedPassword) {
+      nextErrors.confirmPassword = 'Passwords do not match.';
     }
 
     setFieldErrors(nextErrors);
@@ -64,6 +104,8 @@ export default function LoginPage({ onSuccess }) {
       }
       case 'password':
         return !trimmed || String(trimmed).length < 6 ? 'Password must be at least 6 characters.' : '';
+      case 'confirmPassword':
+        return mode === 'reset-password' && String(value) !== password ? 'Passwords do not match.' : '';
       default:
         return '';
     }
@@ -147,7 +189,15 @@ export default function LoginPage({ onSuccess }) {
       setError('');
       setSuccess('');
       setFieldErrors({});
-      if (mode === 'register') {
+      if (mode === 'reset-password') {
+        await auth.resetPassword(resetActor, resetToken, password);
+        setSuccess('Password reset successful. You can now sign in.');
+        setMode(resetActor === 'merchant' ? 'merchant' : resetActor === 'client' ? 'client' : 'admin');
+        setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        navigate('/login', { replace: true });
+      } else if (mode === 'register') {
         await auth.register({
           name: merchantName,
           email: merchantEmail || email,
@@ -173,9 +223,8 @@ export default function LoginPage({ onSuccess }) {
         await onSuccess?.('merchant');
         navigate('/merchant/merchants', { replace: true });
       } else if (mode === 'client') {
-        await auth.loginMerchant(email, password);
-        await onSuccess?.('merchant');
-        navigate('/merchant/merchants', { replace: true });
+        await auth.loginClient(email, password);
+        setSuccess('Client login successful. Client marketplace UI is not connected yet.');
       } else {
         await auth.login(email, password);
         const profile = await auth.me().catch(() => null);
@@ -218,6 +267,26 @@ export default function LoginPage({ onSuccess }) {
         ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)] shadow-sm'
         : 'border-[var(--border)] text-[var(--muted-ink)] hover:bg-[var(--surface-soft)]'
     }`;
+
+  const handleForgotPassword = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setFieldErrors((prev) => ({ ...prev, email: 'Enter your email first.' }));
+      setError('Enter your email, then click Forgot password.');
+      return;
+    }
+    try {
+      setLoading(true);
+      setError('');
+      setSuccess('');
+      await auth.forgotPassword(loginActor, trimmedEmail);
+      setSuccess('If the account exists, a reset link was sent to your email.');
+    } catch (err) {
+      setError(err?.message || 'Failed to request password reset');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="login-page min-h-screen px-4 py-12 text-[var(--ink)]">
@@ -268,7 +337,9 @@ export default function LoginPage({ onSuccess }) {
           <form className="grid gap-5" onSubmit={handleSubmit} noValidate>
             <div>
               <h2 className="font-display text-2xl">
-                {mode === 'register'
+                {mode === 'reset-password'
+                  ? 'Reset Password'
+                  : mode === 'register'
                   ? 'Merchant Registration'
                   : mode === 'client-register'
                   ? 'Client Registration'
@@ -279,7 +350,9 @@ export default function LoginPage({ onSuccess }) {
                   : 'Admin Login'}
               </h2>
               <p className="mt-2 text-sm text-[var(--muted-ink)]">
-                {mode === 'register'
+                {mode === 'reset-password'
+                  ? 'Enter a new password for your account.'
+                  : mode === 'register'
                   ? 'Create a merchant profile and primary admin.'
                   : mode === 'client-register'
                   ? 'Create a client account with read-only access.'
@@ -291,6 +364,7 @@ export default function LoginPage({ onSuccess }) {
               </p>
             </div>
 
+            {mode !== 'reset-password' && (
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -347,6 +421,7 @@ export default function LoginPage({ onSuccess }) {
                 Client Register
               </button>
             </div>
+            )}
 
             {success && (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
@@ -451,6 +526,7 @@ export default function LoginPage({ onSuccess }) {
               </label>
             )}
 
+            {mode !== 'reset-password' && (
             <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
               {mode === 'merchant'
                 ? 'Merchant Email'
@@ -469,9 +545,12 @@ export default function LoginPage({ onSuccess }) {
                 <span className="text-xs text-red-600">{fieldErrors.email}</span>
               )}
             </label>
+            )}
 
             <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-              {mode === 'merchant'
+              {mode === 'reset-password'
+                ? 'New Password'
+                : mode === 'merchant'
                 ? 'Merchant Password'
                 : mode === 'register'
                 ? 'Owner Password'
@@ -498,10 +577,38 @@ export default function LoginPage({ onSuccess }) {
               )}
             </label>
 
+            {mode === 'reset-password' && (
+              <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                Confirm Password
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(event) => handleFieldChange('confirmPassword', event.target.value, setConfirmPassword)}
+                  className={fieldErrors.confirmPassword ? 'border-red-300 focus-visible:ring-red-200' : ''}
+                />
+                {fieldErrors.confirmPassword && (
+                  <span className="text-xs text-red-600">{fieldErrors.confirmPassword}</span>
+                )}
+              </label>
+            )}
+
+            {mode !== 'register' && mode !== 'client-register' && mode !== 'reset-password' && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="justify-self-start text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)] hover:underline disabled:opacity-60"
+              >
+                Forgot Password?
+              </button>
+            )}
+
             <div className="grid gap-3">
               <Button type="submit" disabled={loading}>
                 {loading
                   ? 'Submitting...'
+                  : mode === 'reset-password'
+                  ? 'Reset Password'
                   : mode === 'register'
                   ? 'Create Merchant'
                   : mode === 'client-register'
