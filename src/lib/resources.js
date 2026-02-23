@@ -43,6 +43,46 @@ const resources = {
         { key: 'description', label: 'Description', type: 'text' },
         { key: 'is_system', label: 'System Role', type: 'boolean' }
       ]
+    },
+    {
+      key: 'platform-client-roles',
+      title: 'Platform Client Roles',
+      permissions: {
+        read: 'view-platform-client-role',
+        create: 'create-platform-client-role',
+        update: 'update-platform-client-role',
+        delete: 'delete-platform-client-role'
+      },
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', required: true },
+        { key: 'is_active', label: 'Active', type: 'boolean' }
+      ]
+    },
+    {
+      key: 'platform-clients',
+      title: 'Platform Clients',
+      permissions: {
+        read: 'view-platform-client',
+        create: 'create-platform-client',
+        update: 'update-platform-client',
+        delete: 'delete-platform-client'
+      },
+      fields: [
+        {
+          key: 'platform_client_role_id',
+          label: 'Client Role',
+          type: 'select',
+          ref: 'platform-client-roles',
+          refLabel: 'name'
+        },
+        { key: 'first_name', label: 'First Name', type: 'text', required: true },
+        { key: 'last_name', label: 'Last Name', type: 'text', required: true },
+        { key: 'email', label: 'Email', type: 'email', required: true },
+        { key: 'phone', label: 'Phone', type: 'text' },
+        { key: 'password', label: 'Password', type: 'password', required: true },
+        { key: 'status', label: 'Status', type: 'select', options: ['active', 'inactive', 'blocked'] },
+        { key: 'is_active', label: 'Active', type: 'boolean' }
+      ]
     }
   ],
   merchant: [

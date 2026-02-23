@@ -777,6 +777,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     const base = ['id', ...fields.map((field) => field.key)];
     const hiddenByResource = {
       users: ['avatar_url', 'password', 'merchant_id', 'branch_id'],
+      'platform-clients': ['password'],
       branches: ['merchant_id', 'parent_branch_id', 'flag_url'],
       'branch-roles': ['branch_id', 'is_system'],
       permissions: ['group_name'],
@@ -1695,7 +1696,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                           )}
                           {canWrite && (
                             <>
-                              {(resource.key === 'users' || resource.key === 'platform-admins') && row.email && (
+                              {(resource.key === 'users' || resource.key === 'platform-admins' || resource.key === 'platform-clients') && row.email && (
                                 <Button size="sm" variant="outline" onClick={() => handleSendResetPassword(row)}>
                                   Reset Password
                                 </Button>
