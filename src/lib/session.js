@@ -7,6 +7,10 @@ const STORAGE_KEYS = {
   merchant: {
     access: 'merchant_access_token',
     refresh: 'merchant_refresh_token'
+  },
+  client: {
+    access: 'client_access_token',
+    refresh: 'client_refresh_token'
   }
 };
 

@@ -246,7 +246,8 @@ export default function LoginPage({ onSuccess }) {
         navigate('/merchant/merchants', { replace: true });
       } else if (mode === 'client') {
         await auth.loginClient(email, password);
-        setSuccess('Client login successful. Client marketplace UI is not connected yet.');
+        await onSuccess?.('client');
+        navigate('/merchant/merchants', { replace: true });
       } else {
         await auth.login(email, password);
         const profile = await auth.me().catch(() => null);

@@ -1,11 +1,13 @@
-import { getAccessToken } from './session';
+import { getAccessToken, getAuthMode } from './session';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
   const isPlatform = path.startsWith('/platform/');
-  const accessToken = getAccessToken(isPlatform ? 'platform' : 'merchant');
+  const authMode = getAuthMode();
+  const tokenMode = isPlatform ? 'platform' : authMode === 'client' ? 'client' : 'merchant';
+  const accessToken = getAccessToken(tokenMode);
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',

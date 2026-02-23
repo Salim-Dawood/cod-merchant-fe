@@ -144,8 +144,8 @@ function normalizeServerValidation(data, fields) {
 export default function CrudPage({ resource, permissions = [], authType, profile }) {
   const isMerchant = authType === 'merchant';
   const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
-  const isClient = isMerchant && roleName === 'client';
-  const canRead = isMerchant
+  const isClient = authType === 'client' || (isMerchant && roleName === 'client');
+  const canRead = isMerchant || authType === 'client'
     ? true
     : resource.permissions?.read
     ? permissions.includes(resource.permissions.read)

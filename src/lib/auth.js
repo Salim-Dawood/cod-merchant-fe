@@ -46,6 +46,7 @@ export const auth = {
       body: JSON.stringify({ email, password })
     });
     clearAuthTokens('merchant');
+    clearAuthTokens('client');
     setAuthMode('platform');
     setAuthTokens('platform', data);
     return data;
@@ -56,6 +57,7 @@ export const auth = {
       body: JSON.stringify({ email, password })
     });
     clearAuthTokens('platform');
+    clearAuthTokens('client');
     setAuthMode('merchant');
     setAuthTokens('merchant', data);
     return data;
@@ -67,6 +69,8 @@ export const auth = {
     });
     clearAuthTokens('platform');
     clearAuthTokens('merchant');
+    setAuthMode('client');
+    setAuthTokens('client', data);
     return data;
   },
   register: (payload) =>
@@ -86,6 +90,7 @@ export const auth = {
       headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined
     });
     clearAuthTokens('merchant');
+    clearAuthTokens('client');
     setAuthMode('platform');
     setAuthTokens('platform', data);
     return data;
@@ -97,8 +102,21 @@ export const auth = {
       headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined
     });
     clearAuthTokens('platform');
+    clearAuthTokens('client');
     setAuthMode('merchant');
     setAuthTokens('merchant', data);
+    return data;
+  },
+  refreshClient: async () => {
+    const refreshToken = getRefreshToken('client');
+    const data = await request('/client/auth/refresh', {
+      method: 'POST',
+      headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined
+    });
+    clearAuthTokens('platform');
+    clearAuthTokens('merchant');
+    setAuthMode('client');
+    setAuthTokens('client', data);
     return data;
   },
   me: () =>
@@ -107,6 +125,10 @@ export const auth = {
     }),
   meMerchant: () =>
     request('/merchant/auth/me', {
+      method: 'GET'
+    }),
+  meClient: () =>
+    request('/client/auth/me', {
       method: 'GET'
     }),
   logout: async () => {
@@ -121,6 +143,13 @@ export const auth = {
       method: 'POST'
     });
     clearAuthTokens('merchant');
+    return data;
+  },
+  logoutClient: async () => {
+    const data = await request('/client/auth/logout', {
+      method: 'POST'
+    });
+    clearAuthTokens('client');
     return data;
   },
   forgotPassword: (actor, email) =>

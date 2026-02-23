@@ -33,7 +33,9 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
 
   const profileName = profile?.email || 'Profile';
   const avatarStorageKey = profile?.id
-    ? `profile_avatar_${authType === 'merchant' ? 'users' : 'platform-admins'}_${profile.id}`
+    ? `profile_avatar_${
+        authType === 'merchant' ? 'users' : authType === 'client' ? 'platform-clients' : 'platform-admins'
+      }_${profile.id}`
     : '';
   const [avatarOverrideById, setAvatarOverrideById] = useState({});
   const storedAvatarUrl = useMemo(() => {
@@ -88,9 +90,9 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
   }, [profile?.id, avatarStorageKey]);
 
   const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
-  const isClient = authType === 'merchant' && roleName === 'client';
+  const isClient = authType === 'client' || (authType === 'merchant' && roleName === 'client');
   const visibleSections = sections.filter((section) =>
-    authType === 'merchant' ? section.title === 'Merchant' : true
+    authType === 'merchant' || authType === 'client' ? section.title === 'Merchant' : true
   );
 
   const visibleLinks = visibleSections.flatMap((section) => {

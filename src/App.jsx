@@ -59,6 +59,19 @@ export default function App() {
         .then((merchantProfile) => finishAuthed('merchant', merchantProfile))
         .catch(() => false);
 
+    const attemptClient = () =>
+      auth
+        .refreshClient()
+        .then(() => auth.meClient())
+        .then((clientProfile) =>
+          finishAuthed('client', {
+            ...clientProfile,
+            role_name: clientProfile?.role_name || 'client',
+            permissions: []
+          })
+        )
+        .catch(() => false);
+
     const attemptPlatform = () =>
       auth
         .refresh()
@@ -66,7 +79,8 @@ export default function App() {
         .then((profile) => finishAuthed('platform', profile))
         .catch(() => false);
 
-    attemptMerchant()
+    attemptClient()
+      .then((ok) => (ok ? true : attemptMerchant()))
       .then((ok) => (ok ? true : attemptPlatform()))
       .then((ok) => {
         if (!ok) {
@@ -81,6 +95,18 @@ export default function App() {
   }, []);
 
   const handleLogin = async (type) => {
+    if (type === 'client') {
+      const clientProfile = await auth.meClient();
+      setAuthed(true);
+      setAuthType('client');
+      setPermissions([]);
+      setProfile({
+        ...clientProfile,
+        role_name: clientProfile?.role_name || 'client',
+        permissions: []
+      });
+      return;
+    }
     if (type === 'merchant') {
       const merchantProfile = await auth.meMerchant();
       setAuthed(true);
@@ -98,7 +124,9 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      if (authType === 'merchant') {
+      if (authType === 'client') {
+        await auth.logoutClient();
+      } else if (authType === 'merchant') {
         await auth.logoutMerchant();
       } else {
         await auth.logout();
@@ -112,6 +140,9 @@ export default function App() {
   };
 
   const allowedRoutes = useMemo(() => {
+    if (authType === 'client') {
+      return routes.filter((route) => route.path === '/merchant/merchants');
+    }
     if (authType === 'merchant') {
       const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
       if (roleName === 'client') {
