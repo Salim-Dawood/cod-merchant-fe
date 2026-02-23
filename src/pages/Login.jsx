@@ -16,6 +16,8 @@ export default function LoginPage({ onSuccess }) {
   const [merchantCountry, setMerchantCountry] = useState('');
   const [merchantCity, setMerchantCity] = useState('');
   const [merchantAddress, setMerchantAddress] = useState('');
+  const [clientFirstName, setClientFirstName] = useState('');
+  const [clientLastName, setClientLastName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [success, setSuccess] = useState('');
   const [mode, setMode] = useState('admin');
@@ -70,6 +72,14 @@ export default function LoginPage({ onSuccess }) {
         nextErrors.merchantName = 'Merchant name is required.';
       }
     }
+    if (mode === 'client-register') {
+      if (!clientFirstName.trim()) {
+        nextErrors.clientFirstName = 'First name is required.';
+      }
+      if (!clientLastName.trim()) {
+        nextErrors.clientLastName = 'Last name is required.';
+      }
+    }
 
     if (!isResetMode && (!trimmedEmail || !emailValid)) {
       nextErrors.email = 'Enter a valid email address.';
@@ -104,6 +114,10 @@ export default function LoginPage({ onSuccess }) {
       }
       case 'password':
         return !trimmed || String(trimmed).length < 6 ? 'Password must be at least 6 characters.' : '';
+      case 'clientFirstName':
+        return mode === 'client-register' && !trimmed ? 'First name is required.' : '';
+      case 'clientLastName':
+        return mode === 'client-register' && !trimmed ? 'Last name is required.' : '';
       case 'confirmPassword':
         return mode === 'reset-password' && String(value) !== password ? 'Passwords do not match.' : '';
       default:
@@ -149,6 +163,12 @@ export default function LoginPage({ onSuccess }) {
     }
     if (key === 'merchant_address') {
       return 'merchantAddress';
+    }
+    if (key === 'first_name') {
+      return 'clientFirstName';
+    }
+    if (key === 'last_name') {
+      return 'clientLastName';
     }
     return key;
   };
@@ -212,6 +232,8 @@ export default function LoginPage({ onSuccess }) {
         setMode('merchant');
       } else if (mode === 'client-register') {
         await auth.registerClient({
+          first_name: clientFirstName,
+          last_name: clientLastName,
           email,
           password,
           phone: clientPhone
@@ -516,14 +538,46 @@ export default function LoginPage({ onSuccess }) {
               </div>
             )}
             {mode === 'client-register' && (
-              <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                Phone (optional)
-                <Input
-                  type="text"
-                  value={clientPhone}
-                  onChange={(event) => setClientPhone(event.target.value)}
-                />
-              </label>
+              <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                    First Name
+                    <Input
+                      type="text"
+                      value={clientFirstName}
+                      onChange={(event) =>
+                        handleFieldChange('clientFirstName', event.target.value, setClientFirstName)
+                      }
+                      className={fieldErrors.clientFirstName ? 'border-red-300 focus-visible:ring-red-200' : ''}
+                    />
+                    {fieldErrors.clientFirstName && (
+                      <span className="text-xs text-red-600">{fieldErrors.clientFirstName}</span>
+                    )}
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                    Last Name
+                    <Input
+                      type="text"
+                      value={clientLastName}
+                      onChange={(event) =>
+                        handleFieldChange('clientLastName', event.target.value, setClientLastName)
+                      }
+                      className={fieldErrors.clientLastName ? 'border-red-300 focus-visible:ring-red-200' : ''}
+                    />
+                    {fieldErrors.clientLastName && (
+                      <span className="text-xs text-red-600">{fieldErrors.clientLastName}</span>
+                    )}
+                  </label>
+                </div>
+                <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                  Phone (optional)
+                  <Input
+                    type="text"
+                    value={clientPhone}
+                    onChange={(event) => setClientPhone(event.target.value)}
+                  />
+                </label>
+              </div>
             )}
 
             {mode !== 'reset-password' && (
