@@ -16,6 +16,7 @@ export default function LoginPage({ onSuccess }) {
   const [merchantCountry, setMerchantCountry] = useState('');
   const [merchantCity, setMerchantCity] = useState('');
   const [merchantAddress, setMerchantAddress] = useState('');
+  const [buyerCompanyName, setBuyerCompanyName] = useState('');
   const [clientFirstName, setClientFirstName] = useState('');
   const [clientLastName, setClientLastName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -33,7 +34,7 @@ export default function LoginPage({ onSuccess }) {
     const isReset = params.get('reset') === '1';
     const actor = params.get('actor') || '';
     const token = params.get('token') || '';
-    if (isReset && token && ['platform', 'merchant', 'client'].includes(actor)) {
+    if (isReset && token && ['platform', 'merchant', 'buyer'].includes(actor)) {
       setMode('reset-password');
       setResetActor(actor);
       setResetToken(token);
@@ -55,7 +56,7 @@ export default function LoginPage({ onSuccess }) {
       return 'merchant';
     }
     if (mode === 'client') {
-      return 'client';
+      return 'buyer';
     }
     return 'platform';
   }, [mode]);
@@ -73,6 +74,9 @@ export default function LoginPage({ onSuccess }) {
       }
     }
     if (mode === 'client-register') {
+      if (!buyerCompanyName.trim()) {
+        nextErrors.buyerCompanyName = 'Company name is required.';
+      }
       if (!clientFirstName.trim()) {
         nextErrors.clientFirstName = 'First name is required.';
       }
@@ -118,6 +122,8 @@ export default function LoginPage({ onSuccess }) {
         return mode === 'client-register' && !trimmed ? 'First name is required.' : '';
       case 'clientLastName':
         return mode === 'client-register' && !trimmed ? 'Last name is required.' : '';
+      case 'buyerCompanyName':
+        return mode === 'client-register' && !trimmed ? 'Company name is required.' : '';
       case 'confirmPassword':
         return mode === 'reset-password' && String(value) !== password ? 'Passwords do not match.' : '';
       default:
@@ -170,6 +176,9 @@ export default function LoginPage({ onSuccess }) {
     if (key === 'last_name') {
       return 'clientLastName';
     }
+    if (key === 'company_name') {
+      return 'buyerCompanyName';
+    }
     return key;
   };
 
@@ -212,7 +221,7 @@ export default function LoginPage({ onSuccess }) {
       if (mode === 'reset-password') {
         await auth.resetPassword(resetActor, resetToken, password);
         setSuccess('Password reset successful. You can now sign in.');
-        setMode(resetActor === 'merchant' ? 'merchant' : resetActor === 'client' ? 'client' : 'admin');
+        setMode(resetActor === 'merchant' ? 'merchant' : resetActor === 'buyer' ? 'client' : 'admin');
         setPassword('');
         setConfirmPassword('');
         setShowPassword(false);
@@ -232,13 +241,14 @@ export default function LoginPage({ onSuccess }) {
         setMode('merchant');
       } else if (mode === 'client-register') {
         await auth.registerClient({
+          company_name: buyerCompanyName,
           first_name: clientFirstName,
           last_name: clientLastName,
           email,
           password,
           phone: clientPhone
         });
-        setSuccess('Client registered. You can now log in.');
+        setSuccess('Buyer account registered. You can now log in.');
         setMode('client');
       } else if (mode === 'merchant') {
         await auth.loginMerchant(email, password);
@@ -365,11 +375,11 @@ export default function LoginPage({ onSuccess }) {
                   : mode === 'register'
                   ? 'Merchant Registration'
                   : mode === 'client-register'
-                  ? 'Client Registration'
+                  ? 'Buyer Registration'
                   : mode === 'merchant'
                   ? 'Merchant Login'
                   : mode === 'client'
-                  ? 'Client Login'
+                  ? 'Buyer Login'
                   : 'Admin Login'}
               </h2>
               <p className="mt-2 text-sm text-[var(--muted-ink)]">
@@ -378,11 +388,11 @@ export default function LoginPage({ onSuccess }) {
                   : mode === 'register'
                   ? 'Create a merchant profile and primary admin.'
                   : mode === 'client-register'
-                  ? 'Create a client account with read-only access.'
+                  ? 'Create a buyer company account and primary buyer user.'
                   : mode === 'merchant'
                   ? 'Use your merchant admin email and password.'
                   : mode === 'client'
-                  ? 'Use your client email and password.'
+                  ? 'Use your buyer email and password.'
                   : 'Use your platform admin email and password.'}
               </p>
             </div>
@@ -417,7 +427,7 @@ export default function LoginPage({ onSuccess }) {
                 }}
                 className={modeButtonClass('client')}
               >
-                Client Login
+                Buyer Login
               </button>
               <button
                 type="button"
@@ -441,7 +451,7 @@ export default function LoginPage({ onSuccess }) {
                 }}
                 className={modeButtonClass('client-register')}
               >
-                Client Register
+                Buyer Register
               </button>
             </div>
             )}
@@ -540,6 +550,20 @@ export default function LoginPage({ onSuccess }) {
             )}
             {mode === 'client-register' && (
               <div className="grid gap-4">
+                <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                  Company Name
+                  <Input
+                    type="text"
+                    value={buyerCompanyName}
+                    onChange={(event) =>
+                      handleFieldChange('buyerCompanyName', event.target.value, setBuyerCompanyName)
+                    }
+                    className={fieldErrors.buyerCompanyName ? 'border-red-300 focus-visible:ring-red-200' : ''}
+                  />
+                  {fieldErrors.buyerCompanyName && (
+                    <span className="text-xs text-red-600">{fieldErrors.buyerCompanyName}</span>
+                  )}
+                </label>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
                     First Name
@@ -588,7 +612,7 @@ export default function LoginPage({ onSuccess }) {
                 : mode === 'register'
                 ? 'Owner Email'
                 : mode === 'client' || mode === 'client-register'
-                ? 'Client Email'
+                ? 'Buyer Email'
                 : 'Admin Email'}
               <Input
                 type="email"
@@ -610,7 +634,7 @@ export default function LoginPage({ onSuccess }) {
                 : mode === 'register'
                 ? 'Owner Password'
                 : mode === 'client' || mode === 'client-register'
-                ? 'Client Password'
+                ? 'Buyer Password'
                 : 'Admin Password'}
               <div className="relative">
                 <Input
@@ -667,7 +691,7 @@ export default function LoginPage({ onSuccess }) {
                   : mode === 'register'
                   ? 'Create Merchant'
                   : mode === 'client-register'
-                  ? 'Create Client'
+                  ? 'Create Buyer'
                   : 'Sign In'}
               </Button>
               <p className="text-xs text-[var(--muted-ink)]">

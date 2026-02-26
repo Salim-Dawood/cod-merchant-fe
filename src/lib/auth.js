@@ -63,7 +63,7 @@ export const auth = {
     return data;
   },
   loginClient: async (email, password) => {
-    const data = await request('/client/auth/login', {
+    const data = await request('/buyer/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
@@ -79,7 +79,7 @@ export const auth = {
       body: JSON.stringify(payload)
     }),
   registerClient: (payload) =>
-    request('/client/auth/register', {
+    request('/buyer/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
@@ -109,7 +109,7 @@ export const auth = {
   },
   refreshClient: async () => {
     const refreshToken = getRefreshToken('client');
-    const data = await request('/client/auth/refresh', {
+    const data = await request('/buyer/auth/refresh', {
       method: 'POST',
       headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined
     });
@@ -128,7 +128,7 @@ export const auth = {
       method: 'GET'
     }),
   meClient: () =>
-    request('/client/auth/me', {
+    request('/buyer/auth/me', {
       method: 'GET'
     }),
   logout: async () => {
@@ -146,7 +146,7 @@ export const auth = {
     return data;
   },
   logoutClient: async () => {
-    const data = await request('/client/auth/logout', {
+    const data = await request('/buyer/auth/logout', {
       method: 'POST'
     });
     clearAuthTokens('client');
