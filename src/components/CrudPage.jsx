@@ -1530,6 +1530,123 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 </>
               )}
             </div>
+          ) : resource.key === 'users' ? (
+            <div className="grid gap-4 p-4 sm:p-6 md:grid-cols-2 xl:grid-cols-3">
+              {clientGateMessage ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  {clientGateMessage}
+                </div>
+              ) : loading ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Loading...
+                </div>
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  No users found.
+                </div>
+              ) : (
+                <>
+                  {paginatedRows.map((row) => {
+                    const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                    const statusClass =
+                      statusValue === 'active'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : statusValue === 'pending'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : statusValue === 'suspended' || statusValue === 'blocked'
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+                    const branchOption = refOptions.branch_id?.find(
+                      (option) => String(option.value) === String(row.branch_id)
+                    );
+                    const roleOption = refOptions.merchant_role_id?.find(
+                      (option) => String(option.value) === String(row.merchant_role_id)
+                    );
+                    const userName = row.email || `User #${row.id}`;
+                    const branchLabel = compactOptionLabel(branchOption?.label) || 'No branch';
+                    const roleLabel = compactOptionLabel(roleOption?.label) || 'No role';
+                    const branchFlagUrl = branchOption?.flag_url || '';
+                    const avatarUrl = row.avatar_url ? String(row.avatar_url) : '';
+
+                    return (
+                      <div
+                        key={row.id}
+                        className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-strong)]">
+                            {avatarUrl ? (
+                              <img
+                                src={avatarUrl}
+                                alt={userName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              getInitials(userName)
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-lg font-semibold text-[var(--ink)] break-words">
+                              {userName}
+                            </div>
+                            <div className="mt-1 text-xs text-[var(--muted-ink)]">
+                              ID #{row.id}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                              <Badge className={`border ${statusClass}`}>
+                                {formatValue(row.status)}
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                <span className="inline-flex items-center gap-2">
+                                  <FlagChip title={branchLabel} url={branchFlagUrl} />
+                                  {branchLabel}
+                                </span>
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                {roleLabel}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 text-sm text-[var(--muted-ink)]">
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted-ink)]">Email</div>
+                            <div className="mt-1 break-words text-[var(--ink)]">{row.email || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted-ink)]">Phone</div>
+                            <div className="mt-1 text-[var(--ink)]">{row.phone || '-'}</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-auto flex flex-wrap gap-2 pt-2">
+                          {row.email && (
+                            <Button size="sm" variant="outline" onClick={() => handleSendResetPassword(row)}>
+                              Reset Password
+                            </Button>
+                          )}
+                          {(isMerchant ||
+                            !resource.permissions?.update ||
+                            permissions.includes(resource.permissions.update)) && (
+                            <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
+                              Edit
+                            </Button>
+                          )}
+                          {(isMerchant ||
+                            !resource.permissions?.delete ||
+                            permissions.includes(resource.permissions.delete)) && (
+                            <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
+                              Delete
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
           ) : (
           <Table className="responsive-table w-full">
             <TableHeader className="sticky top-0 z-10 bg-black text-white">
