@@ -2092,39 +2092,41 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           </Table>
           )}
         </div>
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] p-0 text-xs text-[var(--muted-ink)]">
-          <div className="flex items-center gap-2">
-            <span>Page {currentPage} / {totalPages}</span>
-            <button
-              type="button"
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5"
-              disabled={currentPage <= 1}
-              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            >
-              Prev
-            </button>
-            <button
-              type="button"
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5"
-              disabled={currentPage >= totalPages}
-              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-            >
-              Next
-            </button>
+        {!isClient && (
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] p-0 text-xs text-[var(--muted-ink)]">
+            <div className="flex items-center gap-2">
+              <span>Page {currentPage} / {totalPages}</span>
+              <button
+                type="button"
+                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              >
+                Next
+              </button>
+            </div>
+            <label className="flex items-center gap-2">
+              <span>Rows</span>
+              <select
+                className="h-6 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs text-[var(--muted-ink)]"
+                value={pageSize}
+                onChange={(event) => setPageSize(Number(event.target.value))}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+              </select>
+            </label>
           </div>
-          <label className="flex items-center gap-2">
-            <span>Rows</span>
-            <select
-              className="h-6 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs text-[var(--muted-ink)]"
-              value={pageSize}
-              onChange={(event) => setPageSize(Number(event.target.value))}
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-            </select>
-          </label>
-        </div>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
