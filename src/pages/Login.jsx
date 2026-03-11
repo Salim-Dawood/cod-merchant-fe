@@ -10,12 +10,6 @@ export default function LoginPage({ onSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [merchantName, setMerchantName] = useState('');
-  const [merchantEmail, setMerchantEmail] = useState('');
-  const [merchantPhone, setMerchantPhone] = useState('');
-  const [merchantCountry, setMerchantCountry] = useState('');
-  const [merchantCity, setMerchantCity] = useState('');
-  const [merchantAddress, setMerchantAddress] = useState('');
   const [buyerCompanyName, setBuyerCompanyName] = useState('');
   const [clientFirstName, setClientFirstName] = useState('');
   const [clientLastName, setClientLastName] = useState('');
@@ -68,11 +62,6 @@ export default function LoginPage({ onSuccess }) {
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
     const isResetMode = mode === 'reset-password';
 
-    if (mode === 'register') {
-      if (!merchantName.trim()) {
-        nextErrors.merchantName = 'Merchant name is required.';
-      }
-    }
     if (mode === 'client-register') {
       if (!buyerCompanyName.trim()) {
         nextErrors.buyerCompanyName = 'Company name is required.';
@@ -103,15 +92,6 @@ export default function LoginPage({ onSuccess }) {
   const validateField = (key, value) => {
     const trimmed = typeof value === 'string' ? value.trim() : value;
     switch (key) {
-      case 'merchantName':
-        return mode === 'register' && !trimmed ? 'Merchant name is required.' : '';
-      case 'merchantEmail':
-        if (!trimmed) {
-          return '';
-        }
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(trimmed))
-          ? ''
-          : 'Enter a valid email address.';
       case 'email': {
         const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(trimmed));
         return !trimmed || !emailValid ? 'Enter a valid email address.' : '';
@@ -151,24 +131,6 @@ export default function LoginPage({ onSuccess }) {
     }
     if (key === 'admin_password') {
       return 'password';
-    }
-    if (key === 'merchant_email') {
-      return 'merchantEmail';
-    }
-    if (key === 'merchant_phone') {
-      return 'merchantPhone';
-    }
-    if (key === 'merchant_name') {
-      return 'merchantName';
-    }
-    if (key === 'merchant_city') {
-      return 'merchantCity';
-    }
-    if (key === 'merchant_country') {
-      return 'merchantCountry';
-    }
-    if (key === 'merchant_address') {
-      return 'merchantAddress';
     }
     if (key === 'first_name') {
       return 'clientFirstName';
@@ -226,19 +188,6 @@ export default function LoginPage({ onSuccess }) {
         setConfirmPassword('');
         setShowPassword(false);
         navigate('/login', { replace: true });
-      } else if (mode === 'register') {
-        await auth.register({
-          name: merchantName,
-          email: merchantEmail || email,
-          phone: merchantPhone,
-          country: merchantCountry,
-          city: merchantCity,
-          address: merchantAddress,
-          admin_email: email,
-          admin_password: password
-        });
-        setSuccess('Merchant registered. You can now log in as a platform admin.');
-        setMode('merchant');
       } else if (mode === 'client-register') {
         await auth.registerClient({
           company_name: buyerCompanyName,
@@ -372,8 +321,6 @@ export default function LoginPage({ onSuccess }) {
               <h2 className="font-display text-2xl">
                 {mode === 'reset-password'
                   ? 'Reset Password'
-                  : mode === 'register'
-                  ? 'Merchant Registration'
                   : mode === 'client-register'
                   ? 'Buyer Registration'
                   : mode === 'merchant'
@@ -385,8 +332,6 @@ export default function LoginPage({ onSuccess }) {
               <p className="mt-2 text-sm text-[var(--muted-ink)]">
                 {mode === 'reset-password'
                   ? 'Enter a new password for your account.'
-                  : mode === 'register'
-                  ? 'Create a merchant profile and primary admin.'
                   : mode === 'client-register'
                   ? 'Create a buyer company account and primary buyer user.'
                   : mode === 'merchant'
@@ -432,18 +377,6 @@ export default function LoginPage({ onSuccess }) {
               <button
                 type="button"
                 onClick={() => {
-                  setMode('register');
-                  setSuccess('');
-                  setEmail('');
-                  setPassword('');
-                }}
-                className={modeButtonClass('register')}
-              >
-                Merchant Register
-              </button>
-              <button
-                type="button"
-                onClick={() => {
                   setMode('client-register');
                   setSuccess('');
                   setEmail('');
@@ -468,86 +401,6 @@ export default function LoginPage({ onSuccess }) {
               </div>
             )}
 
-            {mode === 'register' && (
-              <div className="grid gap-4">
-                <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                  Merchant Name
-                  <Input
-                    type="text"
-                    value={merchantName}
-                    onChange={(event) => handleFieldChange('merchantName', event.target.value, setMerchantName)}
-                    className={fieldErrors.merchantName ? 'border-red-300 focus-visible:ring-red-200' : ''}
-                  />
-                  {fieldErrors.merchantName && (
-                    <span className="text-xs text-red-600">{fieldErrors.merchantName}</span>
-                  )}
-                </label>
-                <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                  Merchant Email
-                  <Input
-                    type="email"
-                    value={merchantEmail}
-                    onChange={(event) =>
-                      handleFieldChange('merchantEmail', event.target.value, setMerchantEmail)
-                    }
-                    className={fieldErrors.merchantEmail ? 'border-red-300 focus-visible:ring-red-200' : ''}
-                  />
-                  {fieldErrors.merchantEmail && (
-                    <span className="text-xs text-red-600">{fieldErrors.merchantEmail}</span>
-                  )}
-                </label>
-                <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                  Merchant Phone
-                  <Input
-                    type="text"
-                    value={merchantPhone}
-                    onChange={(event) => setMerchantPhone(event.target.value)}
-                    className={fieldErrors.merchantPhone ? 'border-red-300 focus-visible:ring-red-200' : ''}
-                  />
-                  {fieldErrors.merchantPhone && (
-                    <span className="text-xs text-red-600">{fieldErrors.merchantPhone}</span>
-                  )}
-                </label>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                    Country
-                    <Input
-                      type="text"
-                      value={merchantCountry}
-                      onChange={(event) => setMerchantCountry(event.target.value)}
-                      className={fieldErrors.merchantCountry ? 'border-red-300 focus-visible:ring-red-200' : ''}
-                    />
-                    {fieldErrors.merchantCountry && (
-                      <span className="text-xs text-red-600">{fieldErrors.merchantCountry}</span>
-                    )}
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                    City
-                    <Input
-                      type="text"
-                      value={merchantCity}
-                      onChange={(event) => setMerchantCity(event.target.value)}
-                      className={fieldErrors.merchantCity ? 'border-red-300 focus-visible:ring-red-200' : ''}
-                    />
-                    {fieldErrors.merchantCity && (
-                      <span className="text-xs text-red-600">{fieldErrors.merchantCity}</span>
-                    )}
-                  </label>
-                </div>
-                <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                  Address
-                  <Input
-                    type="text"
-                    value={merchantAddress}
-                    onChange={(event) => setMerchantAddress(event.target.value)}
-                    className={fieldErrors.merchantAddress ? 'border-red-300 focus-visible:ring-red-200' : ''}
-                  />
-                  {fieldErrors.merchantAddress && (
-                    <span className="text-xs text-red-600">{fieldErrors.merchantAddress}</span>
-                  )}
-                </label>
-              </div>
-            )}
             {mode === 'client-register' && (
               <div className="grid gap-4">
                 <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
@@ -609,8 +462,6 @@ export default function LoginPage({ onSuccess }) {
             <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
               {mode === 'merchant'
                 ? 'Merchant Email'
-                : mode === 'register'
-                ? 'Owner Email'
                 : mode === 'client' || mode === 'client-register'
                 ? 'Buyer Email'
                 : 'Admin Email'}
@@ -631,8 +482,6 @@ export default function LoginPage({ onSuccess }) {
                 ? 'New Password'
                 : mode === 'merchant'
                 ? 'Merchant Password'
-                : mode === 'register'
-                ? 'Owner Password'
                 : mode === 'client' || mode === 'client-register'
                 ? 'Buyer Password'
                 : 'Admin Password'}
@@ -671,7 +520,7 @@ export default function LoginPage({ onSuccess }) {
               </label>
             )}
 
-            {mode !== 'register' && mode !== 'client-register' && mode !== 'reset-password' && (
+            {mode !== 'client-register' && mode !== 'reset-password' && (
               <button
                 type="button"
                 onClick={handleForgotPassword}
@@ -688,8 +537,6 @@ export default function LoginPage({ onSuccess }) {
                   ? 'Submitting...'
                   : mode === 'reset-password'
                   ? 'Reset Password'
-                  : mode === 'register'
-                  ? 'Create Merchant'
                   : mode === 'client-register'
                   ? 'Create Buyer'
                   : 'Sign In'}

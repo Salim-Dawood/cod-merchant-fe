@@ -191,21 +191,6 @@ const resources = {
       ]
     },
     {
-      key: 'permissions',
-      title: 'Permissions',
-      permissions: {
-        read: 'view-permission',
-        create: 'create-permission',
-        update: 'update-permission',
-        delete: 'delete-permission'
-      },
-      fields: [
-        { key: 'key_name', label: 'Key', type: 'text', required: true },
-        { key: 'description', label: 'Description', type: 'text' },
-        { key: 'group_name', label: 'Group', type: 'text' }
-      ]
-    },
-    {
       key: 'branch-roles',
       title: 'Branch Roles',
       permissions: {

@@ -18,7 +18,6 @@ const sections = [
       { label: 'Merchants', to: '/merchant/merchants', permission: 'view-merchant', icon: 'store' },
       { label: 'Branches', to: '/merchant/branches', permission: 'view-branch', icon: 'branch' },
       { label: 'Users', to: '/merchant/users', permission: 'view-user', icon: 'user' },
-      { label: 'Permissions', to: '/merchant/permissions', permission: 'view-permission', icon: 'key' },
       { label: 'Branch Roles', to: '/merchant/branch-roles', permission: 'view-branch-role', icon: 'id' },
       { label: 'Products', to: '/merchant/products', permission: 'view-product', icon: 'stack' },
       { label: 'Categories', to: '/merchant/categories', permission: 'view-category', icon: 'grid' }

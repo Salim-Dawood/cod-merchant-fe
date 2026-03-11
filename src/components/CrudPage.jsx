@@ -53,6 +53,10 @@ function getInitials(value) {
   return initials.toUpperCase();
 }
 
+function compactOptionLabel(label) {
+  return label ? String(label).replace(/\s*\(#\d+\)\s*$/, '') : '';
+}
+
 function FlagChip({ title, url }) {
   if (url) {
     return (
@@ -346,16 +350,18 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   }, [resource.key, isClient]);
 
   useEffect(() => {
-    if (!isClient) {
+    const params = new URLSearchParams(location.search);
+    const branchId = params.get('branch_id') || '';
+    setSelectedBranchId(branchId);
+    if (isClient) {
+      const merchantId = params.get('merchant_id') || '';
+      const categoryId = params.get('category_id') || '';
+      setSelectedMerchantId(merchantId);
+      setSelectedCategoryId(categoryId);
       return;
     }
-    const params = new URLSearchParams(location.search);
-    const merchantId = params.get('merchant_id') || '';
-    const branchId = params.get('branch_id') || '';
-    const categoryId = params.get('category_id') || '';
-    setSelectedMerchantId(merchantId);
-    setSelectedBranchId(branchId);
-    setSelectedCategoryId(categoryId);
+    setSelectedMerchantId('');
+    setSelectedCategoryId('');
   }, [location.search, isClient]);
 
   useEffect(() => {
@@ -781,7 +787,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       branches: ['merchant_id', 'parent_branch_id', 'flag_url'],
       'branch-roles': ['branch_id', 'is_system'],
       permissions: ['group_name'],
-      products: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug'],
+      products: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug', 'is_active'],
       categories: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug']
     };
     const hidden = new Set(hiddenByResource[resource.key] || []);
@@ -811,7 +817,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     const map = {};
     options.forEach((option) => {
       const value = option.value ?? option;
-      const label = option.label ?? option;
+      const label = compactOptionLabel(option.label ?? option);
       map[String(value)] = label;
     });
     return map;
@@ -952,6 +958,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         }
       }
     }
+    if (!isClient && resource.key === 'products' && selectedBranchId) {
+      baseRows = baseRows.filter((row) => String(row.branch_id) === String(selectedBranchId));
+    }
     if (!query) {
       return baseRows;
     }
@@ -1051,13 +1060,19 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   }, [categoryOptions, isClient, scopedProductIds, productCategoryMap]);
 
   const visibleBranchOptions = useMemo(() => {
+    if (!isClient && resource.key === 'products') {
+      return (refOptions.branch_id || []).map((option) => ({
+        ...option,
+        label: compactOptionLabel(option.label)
+      }));
+    }
     if (!selectedMerchantId) {
       return branchOptions;
     }
     return branchOptions.filter(
       (option) => String(option.merchant_id) === String(selectedMerchantId)
     );
-  }, [branchOptions, selectedMerchantId]);
+  }, [branchOptions, isClient, refOptions, resource.key, selectedMerchantId]);
 
   const clientGateMessage = useMemo(() => {
     if (!isClient) {
@@ -1300,54 +1315,57 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        {isClient && (merchantOptions.length > 0 || branchOptions.length > 0) && (
+        {((isClient && (merchantOptions.length > 0 || branchOptions.length > 0))
+          || (!isClient && resource.key === 'products' && visibleBranchOptions.length > 0)) && (
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
-              <span>Merchant</span>
-              <select
-                className="h-9 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
-                value={selectedMerchantId}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setSelectedMerchantId(value);
-                  const nextBranchOptions = branchOptions.filter(
-                    (option) => !value || String(option.merchant_id) === String(value)
-                  );
-                  const nextBranchId =
-                    selectedBranchId && nextBranchOptions.some((opt) => String(opt.value) === String(selectedBranchId))
-                      ? selectedBranchId
-                      : '';
-                  if (nextBranchId !== selectedBranchId) {
-                    setSelectedBranchId(nextBranchId);
-                  }
-                  if (!nextBranchId) {
-                    setSelectedCategoryId('');
-                  }
-                  const params = new URLSearchParams(location.search);
-                  if (value) {
-                    params.set('merchant_id', value);
-                  } else {
-                    params.delete('merchant_id');
-                  }
-                  if (nextBranchId) {
-                    params.set('branch_id', nextBranchId);
-                  } else {
-                    params.delete('branch_id');
-                  }
-                  if (!nextBranchId) {
-                    params.delete('category_id');
-                  }
-                  navigate({ pathname: location.pathname, search: params.toString() });
-                }}
-              >
-                <option value="">All</option>
-                {merchantOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {isClient && (
+              <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
+                <span>Merchant</span>
+                <select
+                  className="h-9 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
+                  value={selectedMerchantId}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedMerchantId(value);
+                    const nextBranchOptions = branchOptions.filter(
+                      (option) => !value || String(option.merchant_id) === String(value)
+                    );
+                    const nextBranchId =
+                      selectedBranchId && nextBranchOptions.some((opt) => String(opt.value) === String(selectedBranchId))
+                        ? selectedBranchId
+                        : '';
+                    if (nextBranchId !== selectedBranchId) {
+                      setSelectedBranchId(nextBranchId);
+                    }
+                    if (!nextBranchId) {
+                      setSelectedCategoryId('');
+                    }
+                    const params = new URLSearchParams(location.search);
+                    if (value) {
+                      params.set('merchant_id', value);
+                    } else {
+                      params.delete('merchant_id');
+                    }
+                    if (nextBranchId) {
+                      params.set('branch_id', nextBranchId);
+                    } else {
+                      params.delete('branch_id');
+                    }
+                    if (!nextBranchId) {
+                      params.delete('category_id');
+                    }
+                    navigate({ pathname: location.pathname, search: params.toString() });
+                  }}
+                >
+                  <option value="">All</option>
+                  {merchantOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
               <span>Branch</span>
               <select
@@ -1374,12 +1392,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 <option value="">All</option>
                 {visibleBranchOptions.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {compactOptionLabel(option.label)}
                   </option>
                 ))}
               </select>
             </label>
-            {resource.key === 'products' && (
+            {isClient && resource.key === 'products' && (
               <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
                 <span>Category</span>
                 <select
@@ -1479,9 +1497,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                               {formatValue(row.status)}
                             </Badge>
                             <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                              {row.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
                               <span className="inline-flex items-center gap-2">
                                 <FlagChip title={branchLabel} url={branchFlagUrl} />
                                 {branchLabel}
@@ -1524,7 +1539,15 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 </TableHead>
                 {tableHeaders.map((header) => (
                   <TableHead key={header} className="text-white">
-                    {header === 'flag_display' ? 'flag' : header}
+                    {header === 'branch_id'
+                      ? 'Branch'
+                      : header === 'is_main'
+                      ? 'Main'
+                      : header === 'permission_count'
+                      ? 'Permissions'
+                      : header === 'flag_display'
+                      ? 'flag'
+                      : header}
                   </TableHead>
                 ))}
                 <TableHead className="text-white">Actions</TableHead>
@@ -1566,8 +1589,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   const branchOption = isUserResource
                     ? refOptions.branch_id?.find((option) => String(option.value) === String(row.branch_id))
                     : null;
-                  const compactOptionLabel = (label) =>
-                    label ? String(label).replace(/\s*\(#\d+\)\s*$/, '') : '';
                   const branchLabel = compactOptionLabel(branchOption?.label);
                   const branchFlagUrl = branchOption?.flag_url || '';
                   const branchRoleLabel = isBranchRoleResource
@@ -1629,6 +1650,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             <Badge className="border border-[var(--border)] bg-[var(--surface)]">
                               {permissionCount(row.id)}
                             </Badge>
+                          ) : header === 'branch_id' && resource.key === 'products' ? (
+                            <span className="cell-clamp">{branchLabelMap[String(row.branch_id)] || '-'}</span>
+                          ) : header === 'is_main' && resource.key === 'branches' ? (
+                            <span className="cell-clamp">{row.is_main ? 'Yes' : 'No'}</span>
                           ) : header === 'status' ? (
                             <Badge className={`border ${statusClass}`}>
                               {formatValue(row[header])}
