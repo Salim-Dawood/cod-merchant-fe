@@ -1315,7 +1315,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        {((isClient && (merchantOptions.length > 0 || branchOptions.length > 0))
+        {((isClient && resource.key !== 'merchants' && (merchantOptions.length > 0 || branchOptions.length > 0))
           || (!isClient && resource.key === 'products' && visibleBranchOptions.length > 0)) && (
           <div className="flex flex-wrap items-center gap-3">
             {isClient && (
@@ -1430,7 +1430,238 @@ export default function CrudPage({ resource, permissions = [], authType, profile
 
       <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px] p-0">
         <div className="flex min-h-0 flex-1 flex-col">
-          {isClient && resource.key == 'products' ? (
+          {isClient && resource.key === 'merchants' ? (
+            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
+              {loading ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Loading...
+                </div>
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  No merchants found.
+                </div>
+              ) : (
+                <>
+                  {paginatedRows.map((row) => {
+                    const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                    const statusClass =
+                      statusValue === 'active'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : statusValue === 'pending'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : statusValue === 'suspended'
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+
+                    return (
+                      <div
+                        key={row.id}
+                        className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-lg font-semibold text-[var(--accent-strong)]">
+                            {getInitials(row.name)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-lg font-semibold text-[var(--ink)] break-words">
+                              {row.name || `Merchant #${row.id}`}
+                            </div>
+                            <div className="mt-1 text-xs text-[var(--muted-ink)]">
+                              ID #{row.id} {row.merchant_code ? `• ${row.merchant_code}` : ''}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                              <Badge className={`border ${statusClass}`}>
+                                {formatValue(row.status)}
+                              </Badge>
+                              {row.city && (
+                                <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                  {row.city}
+                                </Badge>
+                              )}
+                              {row.country && (
+                                <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                  {row.country}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid gap-3 text-sm text-[var(--muted-ink)]">
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.24em]">Email</div>
+                            <div className="mt-1 break-words text-[var(--ink)]">{row.email || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.24em]">Address</div>
+                            <div className="mt-1 text-[var(--ink)]">{row.address || '-'}</div>
+                          </div>
+                        </div>
+                        <div className="mt-auto pt-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="w-full justify-center"
+                            onClick={() => navigate(`/merchant/branches?merchant_id=${row.id}`)}
+                          >
+                            View Branches
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          ) : isClient && resource.key === 'branches' ? (
+            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
+              {loading ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Loading...
+                </div>
+              ) : clientGateMessage ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  {clientGateMessage}
+                </div>
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  No branches found.
+                </div>
+              ) : (
+                <>
+                  {paginatedRows.map((row) => {
+                    const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                    const statusClass =
+                      statusValue === 'active'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : statusValue === 'inactive'
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+
+                    return (
+                      <div
+                        key={row.id}
+                        className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[var(--accent-soft)]">
+                            <FlagChip title={row.name || `Branch #${row.id}`} url={row.flag_url || ''} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-lg font-semibold text-[var(--ink)] break-words">
+                              {row.name || `Branch #${row.id}`}
+                            </div>
+                            <div className="mt-1 text-xs text-[var(--muted-ink)]">
+                              ID #{row.id} {row.code ? `• ${row.code}` : ''}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                              <Badge className={`border ${statusClass}`}>
+                                {formatValue(row.status)}
+                              </Badge>
+                              {row.type && (
+                                <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                  {row.type}
+                                </Badge>
+                              )}
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                Main: {row.is_main ? 'Yes' : 'No'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-auto pt-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="w-full justify-center"
+                            onClick={() =>
+                              navigate(`/merchant/categories?merchant_id=${row.merchant_id}&branch_id=${row.id}`)
+                            }
+                          >
+                            View Categories
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          ) : isClient && resource.key === 'categories' ? (
+            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
+              {loading ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Loading...
+                </div>
+              ) : clientGateMessage ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  {clientGateMessage}
+                </div>
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  No categories found.
+                </div>
+              ) : (
+                <>
+                  {paginatedRows.map((row) => {
+                    const linkedProducts = Object.values(productCategoryMap)
+                      .flat()
+                      .filter((link) => String(link.category_id) === String(row.id)).length;
+                    return (
+                      <div
+                        key={row.id}
+                        className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-lg font-semibold text-[var(--accent-strong)]">
+                            {getInitials(row.name)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-lg font-semibold text-[var(--ink)] break-words">
+                              {row.name || `Category #${row.id}`}
+                            </div>
+                            <div className="mt-1 text-xs text-[var(--muted-ink)]">
+                              ID #{row.id}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                {row.slug || '-'}
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                Products: {linkedProducts}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-auto pt-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="w-full justify-center"
+                            onClick={() => {
+                              const params = new URLSearchParams(location.search);
+                              const merchantId = params.get('merchant_id') || selectedMerchantId || '';
+                              const branchId = params.get('branch_id') || selectedBranchId || '';
+                              const nextParams = new URLSearchParams();
+                              if (merchantId) {
+                                nextParams.set('merchant_id', merchantId);
+                              }
+                              if (branchId) {
+                                nextParams.set('branch_id', branchId);
+                              }
+                              nextParams.set('category_id', row.id);
+                              navigate(`/merchant/products?${nextParams.toString()}`);
+                            }}
+                          >
+                            View Products
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          ) : isClient && resource.key == 'products' ? (
             <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
               {loading ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
