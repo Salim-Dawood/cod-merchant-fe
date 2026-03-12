@@ -26,13 +26,13 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl',
+        'fixed left-[50%] top-[50%] z-50 grid w-[min(92vw,40rem)] max-h-[88vh] translate-x-[-50%] translate-y-[-50%] gap-5 overflow-y-auto rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl sm:p-7',
         className
       )}
       {...props}
     >
       {children}
-      <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+      <DialogClose className="absolute right-4 top-4 rounded-xl border border-transparent p-1 opacity-70 transition-opacity hover:opacity-100 hover:border-[var(--border)] hover:bg-[var(--surface-soft)]">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogClose>
@@ -42,11 +42,11 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }) => (
-  <div className={cn('flex flex-col space-y-1.5 text-left', className)} {...props} />
+  <div className={cn('flex flex-col gap-2 pr-8 text-left', className)} {...props} />
 );
 
 const DialogFooter = ({ className, ...props }) => (
-  <div className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)} {...props} />
+  <div className={cn('flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end', className)} {...props} />
 );
 
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (

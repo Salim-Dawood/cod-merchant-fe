@@ -19,8 +19,8 @@ const sections = [
       { label: 'Branches', to: '/merchant/branches', permission: 'view-branch', icon: 'branch' },
       { label: 'Users', to: '/merchant/users', permission: 'view-user', icon: 'user' },
       { label: 'Branch Roles', to: '/merchant/branch-roles', permission: 'view-branch-role', icon: 'id' },
-      { label: 'Products', to: '/merchant/products', permission: 'view-product', icon: 'stack' },
-      { label: 'Categories', to: '/merchant/categories', permission: 'view-category', icon: 'grid' }
+      { label: 'Categories', to: '/merchant/categories', permission: 'view-category', icon: 'grid' },
+      { label: 'Products', to: '/merchant/products', permission: 'view-product', icon: 'stack' }
     ]
   }
 ];

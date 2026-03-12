@@ -57,6 +57,16 @@ function compactOptionLabel(label) {
   return label ? String(label).replace(/\s*\(#\d+\)\s*$/, '') : '';
 }
 
+function getFieldDefaultValue(field) {
+  if (field.defaultValue !== undefined) {
+    return field.defaultValue;
+  }
+  if (field.type === 'boolean') {
+    return false;
+  }
+  return '';
+}
+
 function FlagChip({ title, url }) {
   if (url) {
     return (
@@ -351,16 +361,15 @@ export default function CrudPage({ resource, permissions = [], authType, profile
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+    const merchantId = params.get('merchant_id') || '';
     const branchId = params.get('branch_id') || '';
+    setSelectedMerchantId(merchantId);
     setSelectedBranchId(branchId);
     if (isClient) {
-      const merchantId = params.get('merchant_id') || '';
       const categoryId = params.get('category_id') || '';
-      setSelectedMerchantId(merchantId);
       setSelectedCategoryId(categoryId);
       return;
     }
-    setSelectedMerchantId('');
     setSelectedCategoryId('');
   }, [location.search, isClient]);
 
@@ -493,7 +502,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const resetForm = () => {
     const initial = {};
     fields.forEach((field) => {
-      initial[field.key] = field.type === 'boolean' ? false : '';
+      initial[field.key] = getFieldDefaultValue(field);
     });
     setForm(initial);
     setFieldErrors({});
@@ -601,6 +610,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         }
         const value = form[field.key];
         if (value === '' || value === null || value === undefined) {
+          if (!editRow && field.defaultValue !== undefined) {
+            payload[field.key] = field.defaultValue;
+          }
           return;
         }
         if (field.type === 'number') {
@@ -617,6 +629,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         }
         payload[field.key] = value;
       });
+
+      if (!editRow && resource.key === 'products' && !Object.prototype.hasOwnProperty.call(payload, 'is_active')) {
+        payload.is_active = true;
+      }
 
       let productId = editRow?.id || null;
       if (editRow) {
@@ -751,7 +767,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         : resource.key === 'users'
         ? 'merchant'
         : resource.key === 'platform-clients'
-        ? 'client'
+        ? 'buyer'
         : '';
     if (!actor) {
       return;
@@ -939,6 +955,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         );
         baseRows = rows.filter((row) => allowedCategories.has(String(row.id)));
       } else {
+        if (!isClient && resource.key === 'users' && selectedMerchantId) {
+          baseRows = baseRows.filter((row) => String(row.merchant_id) === String(selectedMerchantId));
+        }
         if (branchFilter) {
           baseRows = baseRows.filter(
             (row) => row.branch_id !== undefined && String(row.branch_id) === branchFilter
@@ -2058,6 +2077,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                               Info
                             </Button>
                           )}
+                          {!isClient && resource.key === 'merchants' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full justify-center whitespace-nowrap px-4"
+                              onClick={() => navigate(`/merchant/users?merchant_id=${row.id}`)}
+                            >
+                              View Users
+                            </Button>
+                          )}
                           {canWrite && (
                             <>
                               {(resource.key === 'users' || resource.key === 'platform-admins' || resource.key === 'platform-clients') && row.email && (
@@ -2144,6 +2173,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 return null;
               }
               if (editRow && field.type === 'password') {
+                return null;
+              }
+              if (!editRow && (field.key === 'status' || field.key === 'is_active') && field.defaultValue !== undefined) {
+                return null;
+              }
+              if (resource.key === 'products' && field.key === 'is_active') {
                 return null;
               }
               if (field.type === 'select' || field.ref) {
@@ -2249,7 +2284,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   </label>
                 );
               }
-
               const hasError = Boolean(fieldErrors[field.key]);
               if (field.key === 'flag_url') {
                 return (
@@ -2367,6 +2401,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   <p className="mt-3 text-sm text-[var(--muted-ink)]">No permissions available.</p>
                 ) : (
                   <div className="mt-3 grid gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedRolePermissions(rolePermissionOptions.map((option) => String(option.value)))}
+                      >
+                        All Permissions
+                      </Button>
+                    </div>
                     <div className="relative">
                       <button
                         type="button"

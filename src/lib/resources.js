@@ -25,7 +25,8 @@ const resources = {
           key: 'status',
           label: 'Status',
           type: 'select',
-          options: ['active', 'inactive', 'suspended']
+          options: ['active', 'inactive', 'suspended'],
+          defaultValue: 'active'
         }
       ]
     },
@@ -55,7 +56,7 @@ const resources = {
       },
       fields: [
         { key: 'name', label: 'Name', type: 'text', required: true },
-        { key: 'is_active', label: 'Active', type: 'boolean' }
+        { key: 'is_active', label: 'Active', type: 'boolean', defaultValue: true }
       ]
     },
     {
@@ -80,8 +81,8 @@ const resources = {
         { key: 'email', label: 'Email', type: 'email', required: true },
         { key: 'phone', label: 'Phone', type: 'text' },
         { key: 'password', label: 'Password', type: 'password', required: true },
-        { key: 'status', label: 'Status', type: 'select', options: ['active', 'inactive', 'blocked'] },
-        { key: 'is_active', label: 'Active', type: 'boolean' }
+        { key: 'status', label: 'Status', type: 'select', options: ['active', 'inactive', 'blocked'], defaultValue: 'active' },
+        { key: 'is_active', label: 'Active', type: 'boolean', defaultValue: true }
       ]
     }
   ],
@@ -108,7 +109,8 @@ const resources = {
           key: 'status',
           label: 'Status',
           type: 'select',
-          options: ['pending', 'active', 'suspended', 'closed']
+          options: ['active', 'pending', 'suspended', 'closed'],
+          defaultValue: 'active'
         }
       ]
     },
@@ -147,7 +149,7 @@ const resources = {
           options: ['hq', 'office', 'warehouse', 'factory', 'store', 'department']
         },
         { key: 'is_main', label: 'Main', type: 'boolean' },
-        { key: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'] }
+        { key: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' }
       ]
     },
     {
@@ -173,8 +175,7 @@ const resources = {
           label: 'Branch',
           type: 'select',
           ref: 'branches',
-          refLabel: 'name',
-          required: true
+          refLabel: 'name'
         },
         {
           key: 'merchant_role_id',
@@ -187,7 +188,7 @@ const resources = {
         { key: 'avatar_url', label: 'Photo URL', type: 'text' },
         { key: 'phone', label: 'Phone', type: 'text' },
         { key: 'password', label: 'Password', type: 'password', required: true },
-        { key: 'status', label: 'Status', type: 'select', options: ['active', 'inactive', 'blocked'] }
+        { key: 'status', label: 'Status', type: 'select', options: ['active', 'inactive', 'blocked'], defaultValue: 'active' }
       ]
     },
     {
@@ -239,9 +240,10 @@ const resources = {
           key: 'status',
           label: 'Status',
           type: 'select',
-          options: ['draft', 'active', 'hidden', 'out_of_stock', 'archived']
+          options: ['active', 'draft', 'hidden', 'out_of_stock', 'archived'],
+          defaultValue: 'active'
         },
-        { key: 'is_active', label: 'Active', type: 'boolean' },
+        { key: 'is_active', label: 'Active', type: 'boolean', defaultValue: true },
         { key: 'created_by', label: 'Created By', type: 'number', readOnly: true },
         { key: 'created_at', label: 'Created At', type: 'text', readOnly: true },
         { key: 'updated_by', label: 'Updated By', type: 'number', readOnly: true },
@@ -260,7 +262,7 @@ const resources = {
       fields: [
         { key: 'name', label: 'Name', type: 'text', required: true },
         { key: 'slug', label: 'Slug', type: 'text', required: true },
-        { key: 'is_active', label: 'Active', type: 'boolean' },
+        { key: 'is_active', label: 'Active', type: 'boolean', defaultValue: true },
         { key: 'created_by', label: 'Created By', type: 'number', readOnly: true },
         { key: 'created_at', label: 'Created At', type: 'text', readOnly: true },
         { key: 'updated_by', label: 'Updated By', type: 'number', readOnly: true },

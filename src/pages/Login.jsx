@@ -1,8 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { auth } from '../lib/auth';
+
+async function requestResetLinkByEmail(email) {
+  const attempts = await Promise.allSettled([
+    auth.forgotPassword('platform', email),
+    auth.forgotPassword('merchant', email),
+    auth.forgotPassword('buyer', email)
+  ]);
+  return attempts.some((result) => result.status === 'fulfilled');
+}
 
 export default function LoginPage({ onSuccess }) {
   const navigate = useNavigate();
@@ -10,12 +19,11 @@ export default function LoginPage({ onSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [buyerCompanyName, setBuyerCompanyName] = useState('');
   const [clientFirstName, setClientFirstName] = useState('');
   const [clientLastName, setClientLastName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [success, setSuccess] = useState('');
-  const [mode, setMode] = useState('admin');
+  const [mode, setMode] = useState('login');
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -39,33 +47,31 @@ export default function LoginPage({ onSuccess }) {
       return;
     }
     if (mode === 'reset-password') {
-      setMode('admin');
+      setMode('login');
       setResetActor('');
       setResetToken('');
     }
   }, [location.search, mode]);
-
-  const loginActor = useMemo(() => {
-    if (mode === 'merchant') {
-      return 'merchant';
-    }
-    if (mode === 'client') {
-      return 'buyer';
-    }
-    return 'platform';
-  }, [mode]);
 
   const validateForm = () => {
     const nextErrors = {};
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
-    const isResetMode = mode === 'reset-password';
+
+    if (mode === 'login' || mode === 'request-reset' || mode === 'client-register') {
+      if (!trimmedEmail || !emailValid) {
+        nextErrors.email = 'Enter a valid email address.';
+      }
+    }
+
+    if (mode === 'login' || mode === 'client-register' || mode === 'reset-password') {
+      if (trimmedPassword.length < 6) {
+        nextErrors.password = 'Password must be at least 6 characters.';
+      }
+    }
 
     if (mode === 'client-register') {
-      if (!buyerCompanyName.trim()) {
-        nextErrors.buyerCompanyName = 'Company name is required.';
-      }
       if (!clientFirstName.trim()) {
         nextErrors.clientFirstName = 'First name is required.';
       }
@@ -74,14 +80,7 @@ export default function LoginPage({ onSuccess }) {
       }
     }
 
-    if (!isResetMode && (!trimmedEmail || !emailValid)) {
-      nextErrors.email = 'Enter a valid email address.';
-    }
-
-    if (trimmedPassword.length < 6) {
-      nextErrors.password = 'Password must be at least 6 characters.';
-    }
-    if (isResetMode && confirmPassword.trim() !== trimmedPassword) {
+    if (mode === 'reset-password' && confirmPassword.trim() !== trimmedPassword) {
       nextErrors.confirmPassword = 'Passwords do not match.';
     }
 
@@ -97,13 +96,14 @@ export default function LoginPage({ onSuccess }) {
         return !trimmed || !emailValid ? 'Enter a valid email address.' : '';
       }
       case 'password':
+        if (mode === 'request-reset') {
+          return '';
+        }
         return !trimmed || String(trimmed).length < 6 ? 'Password must be at least 6 characters.' : '';
       case 'clientFirstName':
         return mode === 'client-register' && !trimmed ? 'First name is required.' : '';
       case 'clientLastName':
         return mode === 'client-register' && !trimmed ? 'Last name is required.' : '';
-      case 'buyerCompanyName':
-        return mode === 'client-register' && !trimmed ? 'Company name is required.' : '';
       case 'confirmPassword':
         return mode === 'reset-password' && String(value) !== password ? 'Passwords do not match.' : '';
       default:
@@ -123,25 +123,6 @@ export default function LoginPage({ onSuccess }) {
       }
       return next;
     });
-  };
-
-  const normalizeFieldKey = (key) => {
-    if (key === 'admin_email') {
-      return 'email';
-    }
-    if (key === 'admin_password') {
-      return 'password';
-    }
-    if (key === 'first_name') {
-      return 'clientFirstName';
-    }
-    if (key === 'last_name') {
-      return 'clientLastName';
-    }
-    if (key === 'company_name') {
-      return 'buyerCompanyName';
-    }
-    return key;
   };
 
   const parseServerError = (message, data) => {
@@ -167,6 +148,38 @@ export default function LoginPage({ onSuccess }) {
     return { message: message || 'Request failed', errors: {} };
   };
 
+  const attemptAutoLogin = async () => {
+    try {
+      await auth.login(email, password);
+      const profile = await auth.me().catch(() => null);
+      if (profile?.platform_role_id) {
+        await onSuccess?.('platform');
+        navigate('/platform/platform-admins', { replace: true });
+        return true;
+      }
+    } catch {
+      // try next login type
+    }
+
+    try {
+      await auth.loginMerchant(email, password);
+      await onSuccess?.('merchant');
+      navigate('/merchant/merchants', { replace: true });
+      return true;
+    } catch {
+      // try next login type
+    }
+
+    try {
+      await auth.loginClient(email, password);
+      await onSuccess?.('client');
+      navigate('/merchant/merchants', { replace: true });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const validationError = validateForm();
@@ -175,22 +188,33 @@ export default function LoginPage({ onSuccess }) {
       setSuccess('');
       return;
     }
+
     try {
       setLoading(true);
       setError('');
       setSuccess('');
       setFieldErrors({});
+
       if (mode === 'reset-password') {
         await auth.resetPassword(resetActor, resetToken, password);
         setSuccess('Password reset successful. You can now sign in.');
-        setMode(resetActor === 'merchant' ? 'merchant' : resetActor === 'buyer' ? 'client' : 'admin');
+        setMode('login');
         setPassword('');
         setConfirmPassword('');
         setShowPassword(false);
         navigate('/login', { replace: true });
-      } else if (mode === 'client-register') {
+        return;
+      }
+
+      if (mode === 'request-reset') {
+        await requestResetLinkByEmail(email.trim());
+        setSuccess('If the account exists, a reset link was sent to your email.');
+        setMode('login');
+        return;
+      }
+
+      if (mode === 'client-register') {
         await auth.registerClient({
-          company_name: buyerCompanyName,
           first_name: clientFirstName,
           last_name: clientLastName,
           email,
@@ -198,46 +222,29 @@ export default function LoginPage({ onSuccess }) {
           phone: clientPhone
         });
         setSuccess('Buyer account registered. You can now log in.');
-        setMode('client');
-      } else if (mode === 'merchant') {
-        await auth.loginMerchant(email, password);
-        await onSuccess?.('merchant');
-        navigate('/merchant/merchants', { replace: true });
-      } else if (mode === 'client') {
-        await auth.loginClient(email, password);
-        await onSuccess?.('client');
-        navigate('/merchant/merchants', { replace: true });
-      } else {
-        await auth.login(email, password);
-        const profile = await auth.me().catch(() => null);
-        if (!profile?.platform_role_id) {
-          await auth.logout().catch(() => {});
-          throw new Error('Please login as merchant.');
-        }
-        await onSuccess?.('platform');
-        navigate('/platform/platform-admins', { replace: true });
+        setMode('login');
+        return;
+      }
+
+      const loggedIn = await attemptAutoLogin();
+      if (!loggedIn) {
+        throw new Error('Invalid email or password.');
       }
     } catch (err) {
       const parsed = parseServerError(err?.message, err?.data);
       const nextErrors = {};
       if (parsed.errors) {
         Object.entries(parsed.errors).forEach(([key, value]) => {
-          const mappedKey = normalizeFieldKey(key);
           const message = Array.isArray(value) ? value[0] : value;
           if (typeof message === 'string') {
-            nextErrors[mappedKey] = message;
+            nextErrors[key] = message;
           }
         });
       }
       if (Object.keys(nextErrors).length > 0) {
         setFieldErrors((prev) => ({ ...prev, ...nextErrors }));
       }
-      if (mode === 'admin') {
-        const base = parsed.message || 'Admin login failed.';
-        setError(`${base} If you are a merchant, use Merchant Login.`);
-      } else {
-        setError(parsed.message || 'Request failed');
-      }
+      setError(parsed.message || 'Request failed');
     } finally {
       setLoading(false);
     }
@@ -249,26 +256,6 @@ export default function LoginPage({ onSuccess }) {
         ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)] shadow-sm'
         : 'border-[var(--border)] text-[var(--muted-ink)] hover:bg-[var(--surface-soft)]'
     }`;
-
-  const handleForgotPassword = async () => {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setFieldErrors((prev) => ({ ...prev, email: 'Enter your email first.' }));
-      setError('Enter your email, then click Forgot password.');
-      return;
-    }
-    try {
-      setLoading(true);
-      setError('');
-      setSuccess('');
-      await auth.forgotPassword(loginActor, trimmedEmail);
-      setSuccess('If the account exists, a reset link was sent to your email.');
-    } catch (err) {
-      setError(err?.message || 'Failed to request password reset');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="login-page min-h-screen px-4 py-12 text-[var(--ink)]">
@@ -285,32 +272,25 @@ export default function LoginPage({ onSuccess }) {
                 COD Merchant Studio
               </h1>
               <p className="mt-4 text-sm text-[var(--muted-ink)]">
-                A unified command layer for merchants, branches, and platform admins. Keep every storefront aligned from one workspace.
+                A unified command layer for merchants, branches, buyers, and platform admins.
               </p>
             </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Workflow</p>
-                <p className="mt-2 text-base font-semibold">Plan, assign, deploy</p>
+                <p className="mt-2 text-base font-semibold">One login, role aware</p>
                 <p className="mt-2 text-xs text-[var(--muted-ink)]">
-                  Move from onboarding to role assignment in one flow.
+                  Sign in once with email and password, then land on the right dashboard automatically.
                 </p>
               </div>
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Coverage</p>
-                <p className="mt-2 text-base font-semibold">Every branch in sync</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Recovery</p>
+                <p className="mt-2 text-base font-semibold">Reset by email</p>
                 <p className="mt-2 text-xs text-[var(--muted-ink)]">
-                  Centralize permissions and keep stores consistent.
+                  Enter your email and receive a reset link without choosing your account type first.
                 </p>
               </div>
-            </div>
-
-            <div className="mt-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--muted-ink)]">
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--ink)]">Launch Tip</p>
-              <p className="mt-2 leading-relaxed">
-                Use the seeded admin credentials to get started, then rotate passwords before going live.
-              </p>
             </div>
           </div>
         </div>
@@ -320,73 +300,62 @@ export default function LoginPage({ onSuccess }) {
             <div>
               <h2 className="font-display text-2xl">
                 {mode === 'reset-password'
+                  ? 'Set New Password'
+                  : mode === 'request-reset'
                   ? 'Reset Password'
                   : mode === 'client-register'
                   ? 'Buyer Registration'
-                  : mode === 'merchant'
-                  ? 'Merchant Login'
-                  : mode === 'client'
-                  ? 'Buyer Login'
-                  : 'Admin Login'}
+                  : 'Sign In'}
               </h2>
               <p className="mt-2 text-sm text-[var(--muted-ink)]">
                 {mode === 'reset-password'
-                  ? 'Enter a new password for your account.'
+                  ? 'Enter your new password below.'
+                  : mode === 'request-reset'
+                  ? 'Enter your email and we will send a reset link.'
                   : mode === 'client-register'
-                  ? 'Create a buyer company account and primary buyer user.'
-                  : mode === 'merchant'
-                  ? 'Use your merchant admin email and password.'
-                  : mode === 'client'
-                  ? 'Use your buyer email and password.'
-                  : 'Use your platform admin email and password.'}
+                  ? 'Create a buyer account with your personal details.'
+                  : 'Use your email and password. You will be redirected automatically based on your role.'}
               </p>
             </div>
 
             {mode !== 'reset-password' && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('admin');
-                  setSuccess('');
-                }}
-                className={modeButtonClass('admin')}
-              >
-                Admin Login
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('merchant');
-                  setSuccess('');
-                }}
-                className={modeButtonClass('merchant')}
-              >
-                Merchant Login
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('client');
-                  setSuccess('');
-                }}
-                className={modeButtonClass('client')}
-              >
-                Buyer Login
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('client-register');
-                  setSuccess('');
-                  setEmail('');
-                  setPassword('');
-                }}
-                className={modeButtonClass('client-register')}
-              >
-                Buyer Register
-              </button>
-            </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setSuccess('');
+                    setError('');
+                  }}
+                  className={modeButtonClass('login')}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('client-register');
+                    setSuccess('');
+                    setError('');
+                    setPassword('');
+                  }}
+                  className={modeButtonClass('client-register')}
+                >
+                  Buyer Register
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('request-reset');
+                    setSuccess('');
+                    setError('');
+                    setPassword('');
+                  }}
+                  className={modeButtonClass('request-reset')}
+                >
+                  Reset Password
+                </button>
+              </div>
             )}
 
             {success && (
@@ -403,29 +372,13 @@ export default function LoginPage({ onSuccess }) {
 
             {mode === 'client-register' && (
               <div className="grid gap-4">
-                <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-                  Company Name
-                  <Input
-                    type="text"
-                    value={buyerCompanyName}
-                    onChange={(event) =>
-                      handleFieldChange('buyerCompanyName', event.target.value, setBuyerCompanyName)
-                    }
-                    className={fieldErrors.buyerCompanyName ? 'border-red-300 focus-visible:ring-red-200' : ''}
-                  />
-                  {fieldErrors.buyerCompanyName && (
-                    <span className="text-xs text-red-600">{fieldErrors.buyerCompanyName}</span>
-                  )}
-                </label>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
                     First Name
                     <Input
                       type="text"
                       value={clientFirstName}
-                      onChange={(event) =>
-                        handleFieldChange('clientFirstName', event.target.value, setClientFirstName)
-                      }
+                      onChange={(event) => handleFieldChange('clientFirstName', event.target.value, setClientFirstName)}
                       className={fieldErrors.clientFirstName ? 'border-red-300 focus-visible:ring-red-200' : ''}
                     />
                     {fieldErrors.clientFirstName && (
@@ -437,9 +390,7 @@ export default function LoginPage({ onSuccess }) {
                     <Input
                       type="text"
                       value={clientLastName}
-                      onChange={(event) =>
-                        handleFieldChange('clientLastName', event.target.value, setClientLastName)
-                      }
+                      onChange={(event) => handleFieldChange('clientLastName', event.target.value, setClientLastName)}
                       className={fieldErrors.clientLastName ? 'border-red-300 focus-visible:ring-red-200' : ''}
                     />
                     {fieldErrors.clientLastName && (
@@ -459,51 +410,43 @@ export default function LoginPage({ onSuccess }) {
             )}
 
             {mode !== 'reset-password' && (
-            <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-              {mode === 'merchant'
-                ? 'Merchant Email'
-                : mode === 'client' || mode === 'client-register'
-                ? 'Buyer Email'
-                : 'Admin Email'}
-              <Input
-                type="email"
-                value={email}
-                onChange={(event) => handleFieldChange('email', event.target.value, setEmail)}
-                className={fieldErrors.email ? 'border-red-300 focus-visible:ring-red-200' : ''}
-              />
-              {fieldErrors.email && (
-                <span className="text-xs text-red-600">{fieldErrors.email}</span>
-              )}
-            </label>
+              <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                Email
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(event) => handleFieldChange('email', event.target.value, setEmail)}
+                  className={fieldErrors.email ? 'border-red-300 focus-visible:ring-red-200' : ''}
+                />
+                {fieldErrors.email && (
+                  <span className="text-xs text-red-600">{fieldErrors.email}</span>
+                )}
+              </label>
             )}
 
-            <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
-              {mode === 'reset-password'
-                ? 'New Password'
-                : mode === 'merchant'
-                ? 'Merchant Password'
-                : mode === 'client' || mode === 'client-register'
-                ? 'Buyer Password'
-                : 'Admin Password'}
-              <div className="relative">
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(event) => handleFieldChange('password', event.target.value, setPassword)}
-                  className={`pr-16 ${fieldErrors.password ? 'border-red-300 focus-visible:ring-red-200' : ''}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[var(--muted-ink)] hover:text-[var(--ink)]"
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              {fieldErrors.password && (
-                <span className="text-xs text-red-600">{fieldErrors.password}</span>
-              )}
-            </label>
+            {mode !== 'request-reset' && (
+              <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
+                {mode === 'reset-password' ? 'New Password' : 'Password'}
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(event) => handleFieldChange('password', event.target.value, setPassword)}
+                    className={`pr-16 ${fieldErrors.password ? 'border-red-300 focus-visible:ring-red-200' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[var(--muted-ink)] hover:text-[var(--ink)]"
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <span className="text-xs text-red-600">{fieldErrors.password}</span>
+                )}
+              </label>
+            )}
 
             {mode === 'reset-password' && (
               <label className="grid gap-2 text-sm font-medium text-[var(--muted-ink)]">
@@ -520,21 +463,12 @@ export default function LoginPage({ onSuccess }) {
               </label>
             )}
 
-            {mode !== 'client-register' && mode !== 'reset-password' && (
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                disabled={loading}
-                className="justify-self-start text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)] hover:underline disabled:opacity-60"
-              >
-                Forgot Password?
-              </button>
-            )}
-
             <div className="grid gap-3">
               <Button type="submit" disabled={loading}>
                 {loading
                   ? 'Submitting...'
+                  : mode === 'request-reset'
+                  ? 'Send Reset Link'
                   : mode === 'reset-password'
                   ? 'Reset Password'
                   : mode === 'client-register'
