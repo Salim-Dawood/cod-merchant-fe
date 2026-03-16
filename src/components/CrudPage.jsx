@@ -57,6 +57,10 @@ function compactOptionLabel(label) {
   return label ? String(label).replace(/\s*\(#\d+\)\s*$/, '') : '';
 }
 
+function isEmptyValue(value) {
+  return value === '' || value === null || value === undefined;
+}
+
 function getFieldDefaultValue(field) {
   if (field.defaultValue !== undefined) {
     return field.defaultValue;
@@ -588,7 +592,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         return;
       }
       const value = form[field.key];
-      if (value === '' || value === null || value === undefined) {
+      if (isEmptyValue(value)) {
         nextErrors[field.key] = `${field.label} is required.`;
       }
     });
@@ -609,9 +613,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           return;
         }
         const value = form[field.key];
-        if (value === '' || value === null || value === undefined) {
+        if (isEmptyValue(value)) {
           if (!editRow && field.defaultValue !== undefined) {
             payload[field.key] = field.defaultValue;
+          }
+          if (field.ref && editRow) {
+            payload[field.key] = null;
           }
           return;
         }
@@ -632,6 +639,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
 
       if (!editRow && resource.key === 'products' && !Object.prototype.hasOwnProperty.call(payload, 'is_active')) {
         payload.is_active = true;
+      }
+      if (resource.key === 'users' && !Object.prototype.hasOwnProperty.call(payload, 'branch_id')) {
+        payload.branch_id = null;
       }
 
       let productId = editRow?.id || null;
@@ -955,9 +965,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         );
         baseRows = rows.filter((row) => allowedCategories.has(String(row.id)));
       } else {
-        if (!isClient && resource.key === 'users' && selectedMerchantId) {
-          baseRows = baseRows.filter((row) => String(row.merchant_id) === String(selectedMerchantId));
-        }
         if (branchFilter) {
           baseRows = baseRows.filter(
             (row) => row.branch_id !== undefined && String(row.branch_id) === branchFilter
@@ -976,6 +983,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           });
         }
       }
+    }
+    if (!isClient && resource.key === 'users' && selectedMerchantId) {
+      baseRows = baseRows.filter((row) => String(row.merchant_id) === String(selectedMerchantId));
     }
     if (!isClient && resource.key === 'products' && selectedBranchId) {
       baseRows = baseRows.filter((row) => String(row.branch_id) === String(selectedBranchId));
@@ -1333,7 +1343,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 pt-3 md:flex-row md:items-center md:justify-between">
         {((isClient && resource.key !== 'merchants' && (merchantOptions.length > 0 || branchOptions.length > 0))
           || (!isClient && resource.key === 'products' && visibleBranchOptions.length > 0)) && (
           <div className="flex flex-wrap items-center gap-3">
@@ -2201,7 +2211,11 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)] md:col-span-2">
                     {field.label}
                     {hasRoleOptions || field.ref === 'branches' ? (
-                      <div className="relative">
+                      <div className="relative" onBlur={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget)) {
+                          setRoleSelectOpen('');
+                        }
+                      }}>
                         <button
                           type="button"
                           className={`flex h-11 w-full items-center justify-between rounded-2xl border bg-[var(--surface)] px-4 text-sm text-[var(--ink)] shadow-sm focus-visible:outline-none focus-visible:ring-2 ${
