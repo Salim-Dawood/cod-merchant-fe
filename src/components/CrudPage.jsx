@@ -1058,7 +1058,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     const start = (clientMerchantCurrentPage - 1) * pageSize;
     return filteredClientMerchantRows.slice(start, start + pageSize);
   }, [filteredClientMerchantRows, clientMerchantCurrentPage, pageSize]);
-  const showBuyerMerchantCards = isClient && resource.key === 'branches' && !selectedMerchantId;
+  const showBuyerMerchantCards =
+    isClient && (resource.key === 'branches' || resource.key === 'categories') && !selectedMerchantId;
   const visibleResultCount = showBuyerMerchantCards ? filteredClientMerchantRows.length : filteredRows.length;
   const visibleCurrentPage = showBuyerMerchantCards ? clientMerchantCurrentPage : currentPage;
   const visibleTotalPages = showBuyerMerchantCards ? clientMerchantTotalPages : totalPages;
@@ -1134,7 +1135,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     if (resource.key === 'merchants') {
       return '';
     }
-    if (resource.key === 'branches') {
+    if (resource.key === 'branches' || resource.key === 'categories') {
       return '';
     }
     if (!selectedMerchantId) {
@@ -1721,6 +1722,82 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
                   Loading...
                 </div>
+              ) : !selectedMerchantId ? (
+                filteredClientMerchantRows.length === 0 ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                    No merchants found.
+                  </div>
+                ) : (
+                  <>
+                    {paginatedClientMerchantRows.map((row) => {
+                      const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                      const statusClass =
+                        statusValue === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : statusValue === 'pending'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : statusValue === 'suspended'
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+
+                      return (
+                        <div
+                          key={row.id}
+                          className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-lg font-semibold text-[var(--accent-strong)]">
+                              {getInitials(row.name)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-lg font-semibold text-[var(--ink)] break-words">
+                                {row.name || `Merchant #${row.id}`}
+                              </div>
+                              <div className="mt-1 text-xs text-[var(--muted-ink)]">
+                                ID #{row.id} {row.merchant_code ? `• ${row.merchant_code}` : ''}
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                <Badge className={`border ${statusClass}`}>
+                                  {formatValue(row.status)}
+                                </Badge>
+                                {row.city && (
+                                  <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                    {row.city}
+                                  </Badge>
+                                )}
+                                {row.country && (
+                                  <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                    {row.country}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid gap-3 text-sm text-[var(--muted-ink)]">
+                            <div>
+                              <div className="text-[11px] uppercase tracking-[0.24em]">Email</div>
+                              <div className="mt-1 break-words text-[var(--ink)]">{row.email || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase tracking-[0.24em]">Address</div>
+                              <div className="mt-1 text-[var(--ink)]">{row.address || '-'}</div>
+                            </div>
+                          </div>
+                          <div className="mt-auto pt-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="w-full justify-center"
+                              onClick={() => navigate(`/merchant/branches?merchant_id=${row.id}`)}
+                            >
+                              View Branches
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )
               ) : clientGateMessage ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
                   {clientGateMessage}
