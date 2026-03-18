@@ -1483,7 +1483,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       </div>
 
       <div className="soft-panel flex min-h-0 flex-1 flex-col rounded-[24px] p-0">
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className={`flex min-h-0 flex-1 flex-col ${isClient ? 'overflow-y-auto' : ''}`}>
           {isClient && resource.key === 'merchants' ? (
             <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
               {loading ? (
