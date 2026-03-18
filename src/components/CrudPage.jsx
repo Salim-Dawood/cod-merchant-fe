@@ -211,6 +211,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [branchMerchantMap, setBranchMerchantMap] = useState({});
   const [clientProducts, setClientProducts] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState({});
+  const [buyerProductIndex, setBuyerProductIndex] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
@@ -1045,6 +1046,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   useEffect(() => {
     setPage(1);
   }, [query, resource.key, selectedMerchantId, selectedBranchId, selectedCategoryId, pageSize]);
+
+  useEffect(() => {
+    setBuyerProductIndex(0);
+  }, [query, resource.key, selectedMerchantId, selectedBranchId, selectedCategoryId]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -1958,8 +1963,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   No products found.
                 </div>
               ) : (
-                <>
-                {paginatedRows.map((row) => {
+                (() => {
+                  const safeIndex = Math.min(buyerProductIndex, Math.max(filteredRows.length - 1, 0));
+                  const row = filteredRows[safeIndex];
                   const statusValue = row.status ? String(row.status).toLowerCase() : '';
                   const statusClass =
                     statusValue === 'active'
@@ -1974,7 +1980,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                     return categoryLabelMap[key] || `#${link.category_id}`;
                   });
                   const images = productImageMap[row.id] || [];
-                  const coverUrl = images[0]?.url ? String(images[0].url) : '';
+                  const imageIndex = getCarouselIndex(row.id, images.length || 1);
+                  const coverUrl = images[imageIndex]?.url ? String(images[imageIndex].url) : '';
                   const branchLabel =
                     row.branch_id !== undefined
                       ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
@@ -1982,30 +1989,88 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   const branchFlagUrl = branchIdFlagMap[String(row.branch_id)] || '';
 
                   return (
-                    <div
-                      key={row.id}
-                      className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-[var(--accent-soft)]">
-                          {coverUrl ? (
-                            <img
-                              src={coverUrl}
-                              alt={row.name || `Product ${row.id}`}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[var(--accent-strong)]">
-                              {getInitials(row.name)}
-                            </div>
-                          )}
+                    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={safeIndex <= 0}
+                          onClick={() => setBuyerProductIndex((prev) => Math.max(0, prev - 1))}
+                        >
+                          Prev Product
+                        </Button>
+                        <div className="text-sm text-[var(--muted-ink)]">
+                          Product {safeIndex + 1} / {filteredRows.length}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-lg font-semibold text-[var(--ink)]">
-                            {row.name || `Product #${row.id}`}
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={safeIndex >= filteredRows.length - 1}
+                          onClick={() => setBuyerProductIndex((prev) => Math.min(filteredRows.length - 1, prev + 1))}
+                        >
+                          Next Product
+                        </Button>
+                      </div>
+                      <div className="grid gap-5 rounded-[32px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm lg:grid-cols-[1.1fr_0.9fr] lg:p-7">
+                        <div className="flex flex-col gap-4">
+                          <div className="relative overflow-hidden rounded-[28px] bg-[var(--accent-soft)]">
+                            <div className="aspect-[4/3] w-full">
+                              {coverUrl ? (
+                                <img
+                                  src={coverUrl}
+                                  alt={row.name || `Product ${row.id}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-4xl font-semibold text-[var(--accent-strong)]">
+                                  {getInitials(row.name)}
+                                </div>
+                              )}
+                            </div>
+                            {images.length > 1 && (
+                              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between">
+                                <button
+                                  type="button"
+                                  className="rounded-full border border-white/60 bg-white/80 px-3 py-1 text-xs text-[var(--ink)] backdrop-blur"
+                                  onClick={() => setCarousel(row.id, (imageIndex - 1 + images.length) % images.length)}
+                                >
+                                  Prev Image
+                                </button>
+                                <span className="rounded-full bg-black/45 px-3 py-1 text-xs text-white">
+                                  {imageIndex + 1} / {images.length}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="rounded-full border border-white/60 bg-white/80 px-3 py-1 text-xs text-[var(--ink)] backdrop-blur"
+                                  onClick={() => setCarousel(row.id, (imageIndex + 1) % images.length)}
+                                >
+                                  Next Image
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          <div className="text-xs text-[var(--muted-ink)]">Slug: {row.slug || '-'}</div>
-                          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {filteredRows.map((item, index) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                aria-label={`Show product ${index + 1}`}
+                                className={`h-2.5 rounded-full transition ${
+                                  index === safeIndex ? 'w-8 bg-[var(--accent)]' : 'w-2.5 bg-[var(--border)]'
+                                }`}
+                                onClick={() => setBuyerProductIndex(index)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-4">
+                          <div>
+                            <div className="text-3xl font-semibold text-[var(--ink)]">
+                              {row.name || `Product #${row.id}`}
+                            </div>
+                            <div className="mt-2 text-sm text-[var(--muted-ink)]">Slug: {row.slug || '-'}</div>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs">
                             <Badge className={`border ${statusClass}`}>
                               {formatValue(row.status)}
                             </Badge>
@@ -2019,28 +2084,27 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                               Images: {images.length}
                             </Badge>
                           </div>
+                          <div className="rounded-[24px] border border-[var(--border)] bg-[var(--surface-soft)] p-4 text-sm text-[var(--muted-ink)]">
+                            {row.description || 'No description provided.'}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {categories.length === 0 ? (
+                              <Badge className="border border-dashed border-[var(--border)] bg-transparent">
+                                No categories
+                              </Badge>
+                            ) : (
+                              categories.map((label) => (
+                                <Badge key={`${row.id}-${label}`} className="border border-[var(--border)] bg-[var(--surface)]">
+                                  {label}
+                                </Badge>
+                              ))
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-sm text-[var(--muted-ink)]">
-                        {row.description || 'No description provided.'}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {categories.length === 0 ? (
-                          <Badge className="border border-dashed border-[var(--border)] bg-transparent">
-                            No categories
-                          </Badge>
-                        ) : (
-                          categories.map((label) => (
-                            <Badge key={`${row.id}-${label}`} className="border border-[var(--border)] bg-[var(--surface)]">
-                              {label}
-                            </Badge>
-                          ))
-                        )}
                       </div>
                     </div>
                   );
-                })}
-                </>
+                })()
               )}
             </div>
           ) : resource.key === 'platform-clients' ? (
