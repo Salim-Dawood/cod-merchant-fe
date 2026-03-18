@@ -184,7 +184,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [rolePermissionOptions, setRolePermissionOptions] = useState([]);
   const [selectedRolePermissions, setSelectedRolePermissions] = useState([]);
   const [rolePermOpen, setRolePermOpen] = useState(false);
-  const [roleSelectOpen, setRoleSelectOpen] = useState('');
   const [rolePermQuery, setRolePermQuery] = useState('');
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoRole, setInfoRole] = useState(null);
@@ -814,7 +813,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       'branch-roles': ['branch_id', 'is_system'],
       permissions: ['group_name'],
       products: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug', 'is_active'],
-      categories: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug']
+      categories: ['created_by', 'updated_by', 'created_at', 'updated_at', 'slug', 'is_active']
     };
     const hidden = new Set(hiddenByResource[resource.key] || []);
     const filtered = base.filter((key) => !hidden.has(key));
@@ -920,7 +919,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   }, [resource.key, form.branch_id, form.merchant_role_id, filteredUserBranchOptions, filteredUserRoleOptions]);
 
   const filteredRows = useMemo(() => {
-    let baseRows = rows;
+    let baseRows = [...rows].sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
     if (isClient) {
       const merchantFilter = selectedMerchantId ? String(selectedMerchantId) : '';
       const branchFilter = selectedBranchId ? String(selectedBranchId) : '';
@@ -1343,7 +1342,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 pt-3 md:flex-row md:items-center md:justify-between">
+      <div className="surface-panel flex flex-col gap-4 rounded-[20px] px-4 py-3 md:flex-row md:items-center md:justify-between">
         {((isClient && resource.key !== 'merchants' && (merchantOptions.length > 0 || branchOptions.length > 0))
           || (!isClient && resource.key === 'products' && visibleBranchOptions.length > 0)) && (
           <div className="flex flex-wrap items-center gap-3">
@@ -2132,12 +2131,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           )}
         </div>
         {!isClient && (
-          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] p-0 text-xs text-[var(--muted-ink)]">
-            <div className="flex items-center gap-2">
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--muted-ink)] sm:px-6">
+            <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5">
               <span>Page {currentPage} / {totalPages}</span>
               <button
                 type="button"
-                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5"
+                className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 transition hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={currentPage <= 1}
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               >
@@ -2145,17 +2144,17 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               </button>
               <button
                 type="button"
-                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5"
+                className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 transition hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={currentPage >= totalPages}
                 onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
               >
                 Next
               </button>
             </div>
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5">
               <span>Rows</span>
               <select
-                className="h-6 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs text-[var(--muted-ink)]"
+                className="h-7 rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 text-xs text-[var(--muted-ink)]"
                 value={pageSize}
                 onChange={(event) => setPageSize(Number(event.target.value))}
               >
@@ -2200,84 +2199,25 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   options = filteredUserRoleOptions;
                 }
                 const hasError = Boolean(fieldErrors[field.key]);
-                const hasRoleOptions = options.some((option) => {
-                  const label = option?.label || option;
-                  return typeof label === 'string' && /manager|support/i.test(label);
-                });
-                const hasFlagOptions = options.some((option) => Boolean(option?.flag_url));
-                const selectedOption =
-                  options.find((option) => String(option.value ?? option) === String(form[field.key] ?? '')) || null;
                 return (
                   <label key={field.key} className="grid gap-2 text-sm font-medium text-[var(--muted-ink)] md:col-span-2">
                     {field.label}
-                    {hasRoleOptions || field.ref === 'branches' ? (
-                      <div className="relative" onBlur={(event) => {
-                        if (!event.currentTarget.contains(event.relatedTarget)) {
-                          setRoleSelectOpen('');
-                        }
-                      }}>
-                        <button
-                          type="button"
-                          className={`flex h-11 w-full items-center justify-between rounded-2xl border bg-[var(--surface)] px-4 text-sm text-[var(--ink)] shadow-sm focus-visible:outline-none focus-visible:ring-2 ${
-                            hasError
-                              ? 'border-red-300 focus-visible:ring-red-200'
-                              : 'border-[var(--border)] focus-visible:ring-[var(--accent)]'
-                          }`}
-                          onClick={() =>
-                            setRoleSelectOpen((prev) => (prev === field.key ? '' : field.key))
-                          }
-                        >
-                          <span className="flex items-center gap-2">
-                            <FlagChip title={selectedOption?.label || 'Flag'} url={selectedOption?.flag_url} />
-                            <span>{selectedOption?.label || selectedOption || 'Select'}</span>
-                          </span>
-                          <span className="text-xs text-[var(--muted-ink)]">
-                            {roleSelectOpen === field.key ? 'Hide' : 'Show'}
-                          </span>
-                        </button>
-                        {roleSelectOpen === field.key && (
-                          <div className="absolute z-20 mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
-                            <div className="max-h-60 overflow-y-auto">
-                              {options.map((option) => {
-                                const value = option.value || option;
-                                const label = option.label || option;
-                                return (
-                                  <button
-                                    key={value}
-                                    type="button"
-                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-[var(--ink)] hover:bg-[var(--surface-soft)]"
-                                    onClick={() => {
-                                      handleChange(field.key, value);
-                                      setRoleSelectOpen('');
-                                    }}
-                                  >
-                                    <FlagChip title={label} url={option.flag_url} />
-                                    <span>{label}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <select
-                        className={`h-11 rounded-2xl border bg-[var(--surface)] px-4 text-sm text-[var(--ink)] shadow-sm focus-visible:outline-none focus-visible:ring-2 ${
-                          hasError
-                            ? 'border-red-300 focus-visible:ring-red-200'
-                            : 'border-[var(--border)] focus-visible:ring-[var(--accent)]'
-                        }`}
-                        value={form[field.key] ?? ''}
-                        onChange={(event) => handleChange(field.key, event.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {options.map((option) => (
-                          <option key={option.value || option} value={option.value || option}>
-                            {option.label || option}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                    <select
+                      className={`h-11 rounded-2xl border bg-[var(--surface)] px-4 text-sm text-[var(--ink)] shadow-sm focus-visible:outline-none focus-visible:ring-2 ${
+                        hasError
+                          ? 'border-red-300 focus-visible:ring-red-200'
+                          : 'border-[var(--border)] focus-visible:ring-[var(--accent)]'
+                      }`}
+                      value={form[field.key] ?? ''}
+                      onChange={(event) => handleChange(field.key, event.target.value)}
+                    >
+                      <option value="">Select</option>
+                      {options.map((option) => (
+                        <option key={option.value || option} value={option.value || option}>
+                          {compactOptionLabel(option.label || option)}
+                        </option>
+                      ))}
+                    </select>
                     {hasError && (
                       <span className="text-xs text-red-600">{fieldErrors[field.key]}</span>
                     )}
