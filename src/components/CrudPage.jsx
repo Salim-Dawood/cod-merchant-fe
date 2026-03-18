@@ -235,6 +235,67 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     return '';
   }, [resource.key]);
 
+  const loadRolePermissions = useCallback(async () => {
+    if (!roleConfig) {
+      setPermissionMap({});
+      setPermissionIdMap({});
+      setPermissionLinkMap({});
+      setRolePermissionOptions([]);
+      return;
+    }
+
+    try {
+      const [links, permissions] = await Promise.all([
+        api.list(roleConfig.linkResource),
+        api.list(roleConfig.permissionResource)
+      ]);
+      const permissionItems = Array.isArray(permissions) ? permissions : [];
+      const permissionIndex = new Map(
+        permissionItems.map((item) => [
+          item.id,
+          item[roleConfig.permissionLabel] || item.name || item.key_name || `#${item.id}`
+        ])
+      );
+      const map = {};
+      const idMap = {};
+      const linkMap = {};
+      (Array.isArray(links) ? links : []).forEach((link) => {
+        const roleId = link[roleConfig.roleKey];
+        const permissionId = link[roleConfig.permissionKey];
+        if (!roleId) {
+          return;
+        }
+        if (!map[roleId]) {
+          map[roleId] = [];
+        }
+        if (!idMap[roleId]) {
+          idMap[roleId] = [];
+        }
+        if (!linkMap[roleId]) {
+          linkMap[roleId] = [];
+        }
+        const label = permissionIndex.get(permissionId) || `#${permissionId}`;
+        map[roleId].push(label);
+        idMap[roleId].push(permissionId);
+        linkMap[roleId].push(link);
+      });
+      setPermissionMap(map);
+      setPermissionIdMap(idMap);
+      setPermissionLinkMap(linkMap);
+      setRolePermissionOptions(
+        permissionItems.map((item) => ({
+          value: String(item.id),
+          label: permissionIndex.get(item.id) || `#${item.id}`
+        }))
+      );
+    } catch {
+      setPermissionMap({});
+      setPermissionIdMap({});
+      setPermissionLinkMap({});
+      setRolePermissionOptions([]);
+    }
+  }, [roleConfig]);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -359,6 +420,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         setClientProducts([]);
       }
     } catch (err) {
+      setRows([]);
       setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
@@ -441,69 +503,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   }, [fields, resource.key]);
 
   useEffect(() => {
-    const loadPermissions = async () => {
-      if (!roleConfig) {
-        setPermissionMap({});
-        setPermissionIdMap({});
-        setPermissionLinkMap({});
-        setRolePermissionOptions([]);
-        return;
-      }
-
-      try {
-        const [links, permissions] = await Promise.all([
-          api.list(roleConfig.linkResource),
-          api.list(roleConfig.permissionResource)
-        ]);
-        const permissionItems = Array.isArray(permissions) ? permissions : [];
-        const permissionIndex = new Map(
-          permissionItems.map((item) => [
-            item.id,
-            item[roleConfig.permissionLabel] || item.name || item.key_name || `#${item.id}`
-          ])
-        );
-        const map = {};
-        const idMap = {};
-        const linkMap = {};
-        (Array.isArray(links) ? links : []).forEach((link) => {
-          const roleId = link[roleConfig.roleKey];
-          const permissionId = link[roleConfig.permissionKey];
-          if (!roleId) {
-            return;
-          }
-          if (!map[roleId]) {
-            map[roleId] = [];
-          }
-          if (!idMap[roleId]) {
-            idMap[roleId] = [];
-          }
-          if (!linkMap[roleId]) {
-            linkMap[roleId] = [];
-          }
-          const label = permissionIndex.get(permissionId) || `#${permissionId}`;
-          map[roleId].push(label);
-          idMap[roleId].push(permissionId);
-          linkMap[roleId].push(link);
-        });
-        setPermissionMap(map);
-        setPermissionIdMap(idMap);
-        setPermissionLinkMap(linkMap);
-        setRolePermissionOptions(
-          permissionItems.map((item) => ({
-            value: String(item.id),
-            label: permissionIndex.get(item.id) || `#${item.id}`
-          }))
-        );
-      } catch {
-        setPermissionMap({});
-        setPermissionIdMap({});
-        setPermissionLinkMap({});
-        setRolePermissionOptions([]);
-      }
-    };
-
-    loadPermissions();
-  }, [roleConfig]);
+    loadRolePermissions();
+  }, [loadRolePermissions]);
 
   const resetForm = () => {
     const initial = {};
@@ -743,6 +744,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       }
       setOpen(false);
       await load();
+      await loadRolePermissions();
     } catch (err) {
       if (err?.status === 400) {
         const { errors, message } = normalizeServerValidation(err.data, fields);
