@@ -203,6 +203,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const productImageInputRef = useRef(null);
   const [merchantOptions, setMerchantOptions] = useState([]);
+  const [clientMerchantRows, setClientMerchantRows] = useState([]);
   const [selectedMerchantId, setSelectedMerchantId] = useState('');
   const [branchOptions, setBranchOptions] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState('');
@@ -248,6 +249,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         clientBranches = Array.isArray(branches) ? branches : [];
         clientMerchants = Array.isArray(merchants) ? merchants : [];
         const merchantItems = clientMerchants;
+        setClientMerchantRows(merchantItems);
         setMerchantOptions(
           merchantItems.map((merchant) => ({
             value: String(merchant.id),
@@ -277,6 +279,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         });
         setBranchMerchantMap(branchMap);
       } else {
+        setClientMerchantRows([]);
         setMerchantOptions([]);
         setBranchOptions([]);
         setBranchMerchantMap({});
@@ -1027,6 +1030,18 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     clientProducts
   ]);
 
+  const filteredClientMerchantRows = useMemo(() => {
+    const items = [...clientMerchantRows].sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
+    if (!query) {
+      return items;
+    }
+    const search = query.toLowerCase();
+    return items.filter((row) =>
+      ['name', 'legal_name', 'merchant_code', 'email', 'address', 'city', 'country']
+        .some((key) => String(row[key] ?? '').toLowerCase().includes(search))
+    );
+  }, [clientMerchantRows, query]);
+
   useEffect(() => {
     setPage(1);
   }, [query, resource.key, selectedMerchantId, selectedBranchId, selectedCategoryId, pageSize]);
@@ -1037,6 +1052,16 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     const start = (currentPage - 1) * pageSize;
     return filteredRows.slice(start, start + pageSize);
   }, [filteredRows, currentPage, pageSize]);
+  const clientMerchantTotalPages = Math.max(1, Math.ceil(filteredClientMerchantRows.length / pageSize));
+  const clientMerchantCurrentPage = Math.min(page, clientMerchantTotalPages);
+  const paginatedClientMerchantRows = useMemo(() => {
+    const start = (clientMerchantCurrentPage - 1) * pageSize;
+    return filteredClientMerchantRows.slice(start, start + pageSize);
+  }, [filteredClientMerchantRows, clientMerchantCurrentPage, pageSize]);
+  const showBuyerMerchantCards = isClient && resource.key === 'branches' && !selectedMerchantId;
+  const visibleResultCount = showBuyerMerchantCards ? filteredClientMerchantRows.length : filteredRows.length;
+  const visibleCurrentPage = showBuyerMerchantCards ? clientMerchantCurrentPage : currentPage;
+  const visibleTotalPages = showBuyerMerchantCards ? clientMerchantTotalPages : totalPages;
 
   const permissionCount = (roleId) => (permissionMap[roleId] || []).length;
 
@@ -1327,7 +1352,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               className="h-9 w-full max-w-md md:w-72"
             />
             <span className="text-xs text-[var(--muted-ink)]">
-              {loading ? 'Loading' : String(filteredRows.length)}
+              {loading ? 'Loading' : String(visibleResultCount)}
             </span>
             {canWrite && (
               (isMerchant || !resource.permissions?.create ? (
@@ -1546,6 +1571,82 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
                   Loading...
                 </div>
+              ) : !selectedMerchantId ? (
+                filteredClientMerchantRows.length === 0 ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                    No merchants found.
+                  </div>
+                ) : (
+                  <>
+                    {paginatedClientMerchantRows.map((row) => {
+                      const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                      const statusClass =
+                        statusValue === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : statusValue === 'pending'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : statusValue === 'suspended'
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+
+                      return (
+                        <div
+                          key={row.id}
+                          className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-lg font-semibold text-[var(--accent-strong)]">
+                              {getInitials(row.name)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-lg font-semibold text-[var(--ink)] break-words">
+                                {row.name || `Merchant #${row.id}`}
+                              </div>
+                              <div className="mt-1 text-xs text-[var(--muted-ink)]">
+                                ID #{row.id} {row.merchant_code ? `• ${row.merchant_code}` : ''}
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                <Badge className={`border ${statusClass}`}>
+                                  {formatValue(row.status)}
+                                </Badge>
+                                {row.city && (
+                                  <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                    {row.city}
+                                  </Badge>
+                                )}
+                                {row.country && (
+                                  <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                    {row.country}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid gap-3 text-sm text-[var(--muted-ink)]">
+                            <div>
+                              <div className="text-[11px] uppercase tracking-[0.24em]">Email</div>
+                              <div className="mt-1 break-words text-[var(--ink)]">{row.email || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase tracking-[0.24em]">Address</div>
+                              <div className="mt-1 text-[var(--ink)]">{row.address || '-'}</div>
+                            </div>
+                          </div>
+                          <div className="mt-auto pt-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="w-full justify-center"
+                              onClick={() => navigate(`/merchant/branches?merchant_id=${row.id}`)}
+                            >
+                              View Branches
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )
               ) : clientGateMessage ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
                   {clientGateMessage}
@@ -2133,11 +2234,11 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         {!isClient && (
           <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--muted-ink)] sm:px-6">
             <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5">
-              <span>Page {currentPage} / {totalPages}</span>
+              <span>Page {visibleCurrentPage} / {visibleTotalPages}</span>
               <button
                 type="button"
                 className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 transition hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={currentPage <= 1}
+                disabled={visibleCurrentPage <= 1}
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               >
                 Prev
@@ -2145,8 +2246,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               <button
                 type="button"
                 className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 transition hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={currentPage >= totalPages}
-                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={visibleCurrentPage >= visibleTotalPages}
+                onClick={() => setPage((prev) => Math.min(visibleTotalPages, prev + 1))}
               >
                 Next
               </button>
