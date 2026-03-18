@@ -1109,11 +1109,11 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     if (resource.key === 'merchants') {
       return '';
     }
-    if (!selectedMerchantId) {
-      return 'Select a merchant first.';
-    }
     if (resource.key === 'branches') {
       return '';
+    }
+    if (!selectedMerchantId) {
+      return 'Select a merchant first.';
     }
     if (!selectedBranchId) {
       return 'Select a branch first.';
