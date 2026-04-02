@@ -163,6 +163,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const isMerchant = authType === 'merchant';
   const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
   const isClient = authType === 'client' || (isMerchant && roleName === 'client');
+  const isBuyerAuth = authType === 'client';
   const canRead = isMerchant || authType === 'client'
     ? true
     : resource.permissions?.read
@@ -211,6 +212,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [branchMerchantMap, setBranchMerchantMap] = useState({});
   const [clientProducts, setClientProducts] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState({});
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('');
+  const [buyerOrders, setBuyerOrders] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
@@ -345,6 +349,31 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         setBranchOptions([]);
         setBranchMerchantMap({});
       }
+      if (isBuyerAuth) {
+        try {
+          const [methods, orders] = await Promise.all([
+            api.list('buyer/payment-methods'),
+            api.list('buyer/orders')
+          ]);
+          const methodItems = Array.isArray(methods) ? methods : [];
+          setPaymentMethods(methodItems);
+          setBuyerOrders(Array.isArray(orders) ? orders : []);
+          if (methodItems.length > 0) {
+            const defaultMethod = methodItems.find((method) => Boolean(method.is_default));
+            setSelectedPaymentMethodId(String((defaultMethod || methodItems[0]).id));
+          } else {
+            setSelectedPaymentMethodId('');
+          }
+        } catch {
+          setPaymentMethods([]);
+          setBuyerOrders([]);
+          setSelectedPaymentMethodId('');
+        }
+      } else {
+        setPaymentMethods([]);
+        setBuyerOrders([]);
+        setSelectedPaymentMethodId('');
+      }
       if (resource.key === 'products') {
         const requests = [
           api.list('products'),
@@ -425,7 +454,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     } finally {
       setLoading(false);
     }
-  }, [resource.key, isClient]);
+  }, [resource.key, isClient, isBuyerAuth]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -1317,6 +1346,89 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     }));
   };
 
+  const refreshBuyerCommerceData = useCallback(async () => {
+    if (!isBuyerAuth) {
+      return;
+    }
+    try {
+      const [methods, orders] = await Promise.all([
+        api.list('buyer/payment-methods'),
+        api.list('buyer/orders')
+      ]);
+      const methodItems = Array.isArray(methods) ? methods : [];
+      setPaymentMethods(methodItems);
+      setBuyerOrders(Array.isArray(orders) ? orders : []);
+      if (methodItems.length > 0) {
+        const currentExists = methodItems.some((method) => String(method.id) === String(selectedPaymentMethodId));
+        if (!currentExists) {
+          const defaultMethod = methodItems.find((method) => Boolean(method.is_default));
+          setSelectedPaymentMethodId(String((defaultMethod || methodItems[0]).id));
+        }
+      } else {
+        setSelectedPaymentMethodId('');
+      }
+    } catch {
+      // ignore silently in UI
+    }
+  }, [isBuyerAuth, selectedPaymentMethodId]);
+
+  const addPaymentMethod = async () => {
+    const typeInput = window.prompt('Payment type: credit_card / bank_transfer / paypal / manual', 'credit_card');
+    if (!typeInput) {
+      return;
+    }
+    const type = String(typeInput).trim();
+    const payload = { type, is_default: paymentMethods.length === 0 };
+    if (type === 'credit_card') {
+      const brand = window.prompt('Card brand (optional)', 'VISA') || '';
+      const last4 = window.prompt('Card last 4 digits', '') || '';
+      const expiry = window.prompt('Expiry (MM/YY, optional)', '') || '';
+      if (!/^\d{4}$/.test(String(last4).trim())) {
+        window.alert('Card last4 must be exactly 4 digits.');
+        return;
+      }
+      payload.card_brand = String(brand).trim() || null;
+      payload.card_last4 = String(last4).trim();
+      payload.expiry_date = String(expiry).trim() || null;
+    }
+    try {
+      const created = await api.create('buyer/payment-methods', payload);
+      await refreshBuyerCommerceData();
+      if (created?.id) {
+        setSelectedPaymentMethodId(String(created.id));
+      }
+      window.alert('Payment method added.');
+    } catch (err) {
+      window.alert(err.message || 'Failed to add payment method.');
+    }
+  };
+
+  const placeOrder = async (row) => {
+    const quantityRaw = window.prompt('Quantity', String(row.min_order_quantity || 1));
+    if (!quantityRaw) {
+      return;
+    }
+    const quantity = Number(quantityRaw);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      window.alert('Quantity must be a positive integer.');
+      return;
+    }
+    try {
+      const payload = {
+        product_id: row.id,
+        quantity
+      };
+      if (selectedPaymentMethodId) {
+        payload.payment_method_id = Number(selectedPaymentMethodId);
+      }
+      const order = await api.create('buyer/orders', payload);
+      await refreshBuyerCommerceData();
+      window.alert(`Order placed: ${order?.order_number || order?.id || 'success'}`);
+    } catch (err) {
+      window.alert(err.message || 'Failed to place order.');
+    }
+  };
+
   const statusPills = Object.entries(stats.statusCounts || {}).slice(0, 3);
 
   const handleAvatarSelect = () => {
@@ -1472,20 +1584,38 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         {isClient && (
           <div className="flex w-full flex-col gap-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <Input
-                type="text"
-                placeholder="Search merchants, branches, or products..."
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="h-10 w-full md:max-w-xl"
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={goBuyerHome} className="h-10 min-w-[110px]">
-                  Home
-                </Button>
-                <Button variant="outline" onClick={goBuyerBack} className="h-10 min-w-[110px]" disabled={!hasBuyerBackAction}>
-                  Back
-                </Button>
+              <div className="flex w-full flex-col gap-3 md:max-w-xl">
+                <Input
+                  type="text"
+                  placeholder="Search merchants, branches, or products..."
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  className="h-10 w-full"
+                />
+                {resource.key === 'products' && isBuyerAuth && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      className="h-10 min-w-[200px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
+                      value={selectedPaymentMethodId}
+                      onChange={(event) => setSelectedPaymentMethodId(event.target.value)}
+                    >
+                      <option value="">No payment method</option>
+                      {paymentMethods.map((method) => (
+                        <option key={method.id} value={method.id}>
+                          {method.type}{method.card_last4 ? ` • • • • ${method.card_last4}` : ''}{method.is_default ? ' (default)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <Button variant="outline" onClick={addPaymentMethod} className="h-10">
+                      Add Payment Method
+                    </Button>
+                    <span className="text-xs text-[var(--muted-ink)]">Orders: {buyerOrders.length}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                <Button variant="secondary" onClick={goBuyerHome} className="h-10 min-w-[110px]">Home</Button>
+                <Button variant="outline" onClick={goBuyerBack} className="h-10 min-w-[110px]" disabled={!hasBuyerBackAction}>Back</Button>
               </div>
             </div>
           </div>
@@ -2132,6 +2262,18 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                                 ))
                               )}
                             </div>
+                            {isBuyerAuth && (
+                              <div className="pt-2">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="w-full justify-center"
+                                  onClick={() => placeOrder(row)}
+                                >
+                                  Order This Product
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </article>
                       );
