@@ -1082,6 +1082,25 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     return map;
   }, [categoryOptions]);
 
+  const merchantLabelMap = useMemo(() => {
+    const map = {};
+    clientMerchantRows.forEach((merchant) => {
+      map[String(merchant.id)] = merchant.name || merchant.legal_name || `Merchant #${merchant.id}`;
+    });
+    merchantOptions.forEach((option) => {
+      map[String(option.value)] = option.label;
+    });
+    return map;
+  }, [clientMerchantRows, merchantOptions]);
+
+  const buyerBranchLabelMap = useMemo(() => {
+    const map = {};
+    branchOptions.forEach((option) => {
+      map[String(option.value)] = compactOptionLabel(option.label);
+    });
+    return map;
+  }, [branchOptions]);
+
   const scopedProductIds = useMemo(() => {
     if (!isClient) {
       return [];
@@ -1146,11 +1165,119 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     if (!selectedBranchId) {
       return 'Select a branch first.';
     }
-    if (resource.key === 'products' && !selectedCategoryId) {
-      return 'Select a category first.';
-    }
     return '';
   }, [isClient, resource.key, selectedMerchantId, selectedBranchId, selectedCategoryId]);
+
+  const buyerSteps = useMemo(() => {
+    if (!isClient) {
+      return [];
+    }
+    const isMerchantStep = resource.key === 'merchants';
+    const isBranchStep = resource.key === 'branches';
+    const isProductStep = resource.key === 'products' || resource.key === 'categories';
+    return [
+      {
+        key: 'merchant',
+        title: 'Choose merchant',
+        hint: selectedMerchantId ? merchantLabelMap[String(selectedMerchantId)] || 'Selected' : 'Start from the marketplace home.',
+        active: isMerchantStep,
+        complete: Boolean(selectedMerchantId) || isBranchStep || isProductStep
+      },
+      {
+        key: 'branch',
+        title: 'Choose branch',
+        hint: selectedBranchId ? buyerBranchLabelMap[String(selectedBranchId)] || 'Selected' : 'Pick the branch you want to browse.',
+        active: isBranchStep,
+        complete: Boolean(selectedBranchId) || isProductStep
+      },
+      {
+        key: 'items',
+        title: 'Browse items',
+        hint: selectedCategoryId ? categoryLabelMap[String(selectedCategoryId)] || 'Filtered by category' : 'View products in a carousel layout.',
+        active: isProductStep,
+        complete: isProductStep
+      }
+    ];
+  }, [
+    isClient,
+    resource.key,
+    selectedMerchantId,
+    selectedBranchId,
+    selectedCategoryId,
+    merchantLabelMap,
+    buyerBranchLabelMap,
+    categoryLabelMap
+  ]);
+
+  const buyerHeaderTitle = useMemo(() => {
+    if (!isClient) {
+      return resource.title;
+    }
+    if (resource.key === 'merchants') {
+      return 'Choose a merchant';
+    }
+    if (resource.key === 'branches') {
+      return 'Choose a branch';
+    }
+    if (resource.key === 'products') {
+      return 'Browse items';
+    }
+    if (resource.key === 'categories') {
+      return 'Browse categories';
+    }
+    return resource.title;
+  }, [isClient, resource.key, resource.title]);
+
+  const buyerHeaderDescription = useMemo(() => {
+    if (!isClient) {
+      return '';
+    }
+    if (resource.key === 'merchants') {
+      return 'Start by selecting the merchant you want to shop from.';
+    }
+    if (resource.key === 'branches') {
+      return selectedMerchantId
+        ? `Showing branches for ${merchantLabelMap[String(selectedMerchantId)] || 'the selected merchant'}.`
+        : 'Choose a merchant first to continue.';
+    }
+    if (resource.key === 'products') {
+      return selectedBranchId
+        ? `Showing the available items for ${buyerBranchLabelMap[String(selectedBranchId)] || 'the selected branch'}.`
+        : 'Choose a branch first to see its products.';
+    }
+    if (resource.key === 'categories') {
+      return 'Category filters are available if you want to narrow the product list.';
+    }
+    return '';
+  }, [isClient, resource.key, selectedMerchantId, selectedBranchId, merchantLabelMap, buyerBranchLabelMap]);
+
+  const goBuyerHome = useCallback(() => {
+    setSelectedMerchantId('');
+    setSelectedBranchId('');
+    setSelectedCategoryId('');
+    navigate('/merchant/merchants');
+  }, [navigate]);
+
+  const goBuyerBack = useCallback(() => {
+    if (!isClient) {
+      return;
+    }
+    if (resource.key === 'branches') {
+      goBuyerHome();
+      return;
+    }
+    if (resource.key === 'categories' || resource.key === 'products') {
+      if (selectedMerchantId) {
+        navigate(`/merchant/branches?merchant_id=${selectedMerchantId}`);
+      } else {
+        goBuyerHome();
+      }
+      return;
+    }
+    goBuyerHome();
+  }, [goBuyerHome, isClient, navigate, resource.key, selectedMerchantId]);
+
+  const hasBuyerBackAction = isClient && resource.key !== 'merchants';
 
   const existingProductImages = useMemo(
     () => (editRow && editRow.id ? productImageMap[editRow.id] || [] : []),
@@ -1339,6 +1466,77 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   return (
     <div className="flex h-full min-h-0 flex-col space-y-0">
       <div className="surface-panel rise-fade rounded-[24px] px-4 py-3 sm:px-5 sm:py-4">
+        {isClient ? (
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.9fr)]">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
+                <span>Buyer flow</span>
+                <span className="h-px w-10 bg-[var(--border)]" />
+                <span>{resource.title}</span>
+              </div>
+              <div>
+                <h2 className="font-display text-2xl leading-tight sm:text-3xl">{buyerHeaderTitle}</h2>
+                <p className="mt-2 max-w-2xl text-sm text-[var(--muted-ink)]">{buyerHeaderDescription}</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {buyerSteps.map((step, index) => {
+                  const toneClass = step.active
+                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] shadow-[var(--glow)]'
+                    : step.complete
+                    ? 'border-emerald-200 bg-emerald-50'
+                    : 'border-[var(--border)] bg-[var(--surface)]';
+                  return (
+                    <div key={step.key} className={`rounded-[22px] border p-4 ${toneClass}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted-ink)]">
+                          Step {index + 1}
+                        </span>
+                        <span className="rounded-full border border-current px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-ink)]">
+                          {step.active ? 'Now' : step.complete ? 'Done' : 'Next'}
+                        </span>
+                      </div>
+                      <div className="mt-3 text-base font-semibold text-[var(--ink)]">{step.title}</div>
+                      <div className="mt-2 text-sm text-[var(--muted-ink)]">{step.hint}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
+                Quick actions
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button variant="secondary" onClick={goBuyerHome} className="min-w-[128px]">
+                  Home
+                </Button>
+                <Button variant="outline" onClick={goBuyerBack} className="min-w-[128px]" disabled={!hasBuyerBackAction}>
+                  Back
+                </Button>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">Merchant</div>
+                  <div className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                    {selectedMerchantId ? merchantLabelMap[String(selectedMerchantId)] || 'Selected' : 'Not selected'}
+                  </div>
+                </div>
+                <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">Branch</div>
+                  <div className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                    {selectedBranchId ? buyerBranchLabelMap[String(selectedBranchId)] || 'Selected' : 'Not selected'}
+                  </div>
+                </div>
+                <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">Results</div>
+                  <div className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                    {loading ? 'Loading...' : `${visibleResultCount} items`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-xl leading-tight">{resource.title}</h2>
@@ -1368,11 +1566,33 @@ export default function CrudPage({ resource, permissions = [], authType, profile
             )}
           </div>
         </div>
+        )}
       </div>
 
       <div className="surface-panel flex flex-col gap-4 rounded-[20px] px-4 py-3 md:flex-row md:items-center md:justify-between">
-        {((isClient && resource.key !== 'merchants' && (merchantOptions.length > 0 || branchOptions.length > 0))
-          || (!isClient && resource.key === 'products' && visibleBranchOptions.length > 0)) && (
+        {isClient && (
+          <div className="flex w-full flex-col gap-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-xl">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted-ink)]">
+                  Find what you need
+                </div>
+                <p className="mt-2 text-sm text-[var(--muted-ink)]">
+                  Choose a merchant, then a branch, and the items will open in a buyer-friendly carousel view.
+                </p>
+              </div>
+              <Input
+                type="text"
+                placeholder="Search merchants, branches, or products..."
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="h-10 w-full lg:max-w-sm"
+              />
+            </div>
+          </div>
+        )}
+        {((!isClient && resource.key === 'products' && visibleBranchOptions.length > 0)
+          || (isClient && resource.key !== 'merchants' && (merchantOptions.length > 0 || branchOptions.length > 0))) && (
           <div className="flex flex-wrap items-center gap-3">
             {isClient && (
               <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
@@ -1706,10 +1926,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             variant="secondary"
                             className="w-full justify-center"
                             onClick={() =>
-                              navigate(`/merchant/categories?merchant_id=${row.merchant_id}&branch_id=${row.id}`)
+                              navigate(`/merchant/products?merchant_id=${row.merchant_id}&branch_id=${row.id}`)
                             }
                           >
-                            View Categories
+                            View Items
                           </Button>
                         </div>
                       </div>
@@ -1870,7 +2090,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               )}
             </div>
           ) : isClient && resource.key == 'products' ? (
-            <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="flex flex-col gap-6 p-4 sm:p-6">
               {loading ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
                   Loading...
@@ -1961,87 +2181,139 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 </div>
               ) : (
                 <>
-                {paginatedRows.map((row) => {
-                  const statusValue = row.status ? String(row.status).toLowerCase() : '';
-                  const statusClass =
-                    statusValue === 'active'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : statusValue === 'pending'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : statusValue === 'suspended'
-                      ? 'bg-red-50 text-red-700 border-red-200'
-                      : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
-                  const categories = (productCategoryMap[row.id] || []).map((link) => {
-                    const key = link.category_id ? String(link.category_id) : '';
-                    return categoryLabelMap[key] || `#${link.category_id}`;
-                  });
-                  const images = productImageMap[row.id] || [];
-                  const coverUrl = images[0]?.url ? String(images[0].url) : '';
-                  const branchLabel =
-                    row.branch_id !== undefined
-                      ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
-                      : 'Unassigned';
-                  const branchFlagUrl = branchIdFlagMap[String(row.branch_id)] || '';
-
-                  return (
-                    <div
-                      key={row.id}
-                      className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-[var(--accent-soft)]">
-                          {coverUrl ? (
-                            <img
-                              src={coverUrl}
-                              alt={row.name || `Product ${row.id}`}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[var(--accent-strong)]">
-                              {getInitials(row.name)}
-                            </div>
-                          )}
+                  <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted-ink)]">
+                          Product carousel
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-lg font-semibold text-[var(--ink)]">
-                            {row.name || `Product #${row.id}`}
-                          </div>
-                          <div className="text-xs text-[var(--muted-ink)]">Slug: {row.slug || '-'}</div>
-                          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                            <Badge className={`border ${statusClass}`}>
-                              {formatValue(row.status)}
-                            </Badge>
-                            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                              <span className="inline-flex items-center gap-2">
-                                <FlagChip title={branchLabel} url={branchFlagUrl} />
-                                {branchLabel}
-                              </span>
-                            </Badge>
-                            <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                              Images: {images.length}
-                            </Badge>
-                          </div>
+                        <div className="mt-2 text-sm text-[var(--muted-ink)]">
+                          Swipe or scroll horizontally to move through the items for this branch.
                         </div>
                       </div>
-                      <div className="text-sm text-[var(--muted-ink)]">
-                        {row.description || 'No description provided.'}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {categories.length === 0 ? (
-                          <Badge className="border border-dashed border-[var(--border)] bg-transparent">
-                            No categories
-                          </Badge>
-                        ) : (
-                          categories.map((label) => (
-                            <Badge key={`${row.id}-${label}`} className="border border-[var(--border)] bg-[var(--surface)]">
-                              {label}
-                            </Badge>
-                          ))
-                        )}
+                      <div className="rounded-full bg-[var(--surface-soft)] px-4 py-2 text-xs font-semibold text-[var(--muted-ink)]">
+                        {paginatedRows.length} cards on this page
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                  <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 no-scrollbar">
+                    {paginatedRows.map((row) => {
+                      const statusValue = row.status ? String(row.status).toLowerCase() : '';
+                      const statusClass =
+                        statusValue === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : statusValue === 'pending'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : statusValue === 'suspended'
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
+                      const categories = (productCategoryMap[row.id] || []).map((link) => {
+                        const key = link.category_id ? String(link.category_id) : '';
+                        return categoryLabelMap[key] || `#${link.category_id}`;
+                      });
+                      const images = productImageMap[row.id] || [];
+                      const imageIndex = getCarouselIndex(row.id, images.length);
+                      const activeImage = images[imageIndex];
+                      const coverUrl = activeImage?.url ? String(activeImage.url) : '';
+                      const branchLabel =
+                        row.branch_id !== undefined
+                          ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
+                          : 'Unassigned';
+                      const branchFlagUrl = branchIdFlagMap[String(row.branch_id)] || '';
+
+                      return (
+                        <article
+                          key={row.id}
+                          className="flex min-h-[520px] min-w-[300px] snap-start flex-col overflow-hidden rounded-[30px] border border-[var(--border)] bg-[var(--surface)] shadow-sm sm:min-w-[360px] lg:min-w-[420px]"
+                        >
+                          <div className="relative h-64 bg-[var(--accent-soft)]">
+                            {coverUrl ? (
+                              <img
+                                src={coverUrl}
+                                alt={row.name || `Product ${row.id}`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-3xl font-semibold text-[var(--accent-strong)]">
+                                {getInitials(row.name)}
+                              </div>
+                            )}
+                            {images.length > 1 && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg font-semibold text-[var(--ink)] shadow-sm"
+                                  onClick={() => setCarousel(row.id, (imageIndex - 1 + images.length) % images.length)}
+                                >
+                                  {'<'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg font-semibold text-[var(--ink)] shadow-sm"
+                                  onClick={() => setCarousel(row.id, (imageIndex + 1) % images.length)}
+                                >
+                                  {'>'}
+                                </button>
+                              </>
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-5 py-4 text-white">
+                              <div>
+                                <div className="text-[11px] uppercase tracking-[0.22em] text-white/70">Product</div>
+                                <div className="mt-1 text-xl font-semibold">{row.name || `Product #${row.id}`}</div>
+                              </div>
+                              {images.length > 1 && (
+                                <div className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
+                                  {imageIndex + 1}/{images.length}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-1 flex-col gap-4 p-5">
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <Badge className={`border ${statusClass}`}>
+                                {formatValue(row.status)}
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                <span className="inline-flex items-center gap-2">
+                                  <FlagChip title={branchLabel} url={branchFlagUrl} />
+                                  {branchLabel}
+                                </span>
+                              </Badge>
+                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
+                                Slug: {row.slug || '-'}
+                              </Badge>
+                            </div>
+                            <div className="text-sm leading-6 text-[var(--muted-ink)]">
+                              {row.description || 'No description provided.'}
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
+                                <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">MOQ</div>
+                                <div className="mt-1 text-sm font-semibold text-[var(--ink)]">{row.moq || '-'}</div>
+                              </div>
+                              <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
+                                <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">Images</div>
+                                <div className="mt-1 text-sm font-semibold text-[var(--ink)]">{images.length}</div>
+                              </div>
+                            </div>
+                            <div className="mt-auto flex flex-wrap gap-2">
+                              {categories.length === 0 ? (
+                                <Badge className="border border-dashed border-[var(--border)] bg-transparent">
+                                  No categories
+                                </Badge>
+                              ) : (
+                                categories.map((label) => (
+                                  <Badge key={`${row.id}-${label}`} className="border border-[var(--border)] bg-[var(--surface)]">
+                                    {label}
+                                  </Badge>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
                 </>
               )}
             </div>
