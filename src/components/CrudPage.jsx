@@ -1168,47 +1168,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     return '';
   }, [isClient, resource.key, selectedMerchantId, selectedBranchId, selectedCategoryId]);
 
-  const buyerSteps = useMemo(() => {
-    if (!isClient) {
-      return [];
-    }
-    const isMerchantStep = resource.key === 'merchants';
-    const isBranchStep = resource.key === 'branches';
-    const isProductStep = resource.key === 'products' || resource.key === 'categories';
-    return [
-      {
-        key: 'merchant',
-        title: 'Choose merchant',
-        hint: selectedMerchantId ? merchantLabelMap[String(selectedMerchantId)] || 'Selected' : 'Start from the marketplace home.',
-        active: isMerchantStep,
-        complete: Boolean(selectedMerchantId) || isBranchStep || isProductStep
-      },
-      {
-        key: 'branch',
-        title: 'Choose branch',
-        hint: selectedBranchId ? buyerBranchLabelMap[String(selectedBranchId)] || 'Selected' : 'Pick the branch you want to browse.',
-        active: isBranchStep,
-        complete: Boolean(selectedBranchId) || isProductStep
-      },
-      {
-        key: 'items',
-        title: 'Browse items',
-        hint: selectedCategoryId ? categoryLabelMap[String(selectedCategoryId)] || 'Filtered by category' : 'View products in a carousel layout.',
-        active: isProductStep,
-        complete: isProductStep
-      }
-    ];
-  }, [
-    isClient,
-    resource.key,
-    selectedMerchantId,
-    selectedBranchId,
-    selectedCategoryId,
-    merchantLabelMap,
-    buyerBranchLabelMap,
-    categoryLabelMap
-  ]);
-
   const buyerHeaderTitle = useMemo(() => {
     if (!isClient) {
       return resource.title;
@@ -1467,39 +1426,14 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     <div className="flex h-full min-h-0 flex-col space-y-0">
       <div className="surface-panel rise-fade rounded-[24px] px-4 py-3 sm:px-5 sm:py-4">
         {isClient ? (
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.9fr)]">
-            <div className="space-y-4">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.9fr)]">
+            <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
-                <span>Buyer flow</span>
-                <span className="h-px w-10 bg-[var(--border)]" />
                 <span>{resource.title}</span>
               </div>
               <div>
                 <h2 className="font-display text-2xl leading-tight sm:text-3xl">{buyerHeaderTitle}</h2>
                 <p className="mt-2 max-w-2xl text-sm text-[var(--muted-ink)]">{buyerHeaderDescription}</p>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {buyerSteps.map((step, index) => {
-                  const toneClass = step.active
-                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] shadow-[var(--glow)]'
-                    : step.complete
-                    ? 'border-emerald-200 bg-emerald-50'
-                    : 'border-[var(--border)] bg-[var(--surface)]';
-                  return (
-                    <div key={step.key} className={`rounded-[22px] border p-4 ${toneClass}`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted-ink)]">
-                          Step {index + 1}
-                        </span>
-                        <span className="rounded-full border border-current px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-ink)]">
-                          {step.active ? 'Now' : step.complete ? 'Done' : 'Next'}
-                        </span>
-                      </div>
-                      <div className="mt-3 text-base font-semibold text-[var(--ink)]">{step.title}</div>
-                      <div className="mt-2 text-sm text-[var(--muted-ink)]">{step.hint}</div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
             <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
@@ -1572,21 +1506,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       <div className="surface-panel flex flex-col gap-4 rounded-[20px] px-4 py-3 md:flex-row md:items-center md:justify-between">
         {isClient && (
           <div className="flex w-full flex-col gap-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-xl">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted-ink)]">
-                  Find what you need
-                </div>
-                <p className="mt-2 text-sm text-[var(--muted-ink)]">
-                  Choose a merchant, then a branch, and the items will open in a buyer-friendly carousel view.
-                </p>
-              </div>
+            <div className="flex justify-end">
               <Input
                 type="text"
                 placeholder="Search merchants, branches, or products..."
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="h-10 w-full lg:max-w-sm"
+                className="h-10 w-full lg:max-w-md"
               />
             </div>
           </div>
