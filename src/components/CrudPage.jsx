@@ -1426,48 +1426,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     <div className="flex h-full min-h-0 flex-col space-y-0">
       <div className="surface-panel rise-fade rounded-[24px] px-4 py-3 sm:px-5 sm:py-4">
         {isClient ? (
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.9fr)]">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
-                <span>{resource.title}</span>
-              </div>
-              <div>
-                <h2 className="font-display text-2xl leading-tight sm:text-3xl">{buyerHeaderTitle}</h2>
-                <p className="mt-2 max-w-2xl text-sm text-[var(--muted-ink)]">{buyerHeaderDescription}</p>
-              </div>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
+              <span>{resource.title}</span>
             </div>
-            <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted-ink)]">
-                Quick actions
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Button variant="secondary" onClick={goBuyerHome} className="min-w-[128px]">
-                  Home
-                </Button>
-                <Button variant="outline" onClick={goBuyerBack} className="min-w-[128px]" disabled={!hasBuyerBackAction}>
-                  Back
-                </Button>
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">Merchant</div>
-                  <div className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                    {selectedMerchantId ? merchantLabelMap[String(selectedMerchantId)] || 'Selected' : 'Not selected'}
-                  </div>
-                </div>
-                <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">Branch</div>
-                  <div className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                    {selectedBranchId ? buyerBranchLabelMap[String(selectedBranchId)] || 'Selected' : 'Not selected'}
-                  </div>
-                </div>
-                <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">Results</div>
-                  <div className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                    {loading ? 'Loading...' : `${visibleResultCount} items`}
-                  </div>
-                </div>
-              </div>
+            <div>
+              <h2 className="font-display text-2xl leading-tight sm:text-3xl">{buyerHeaderTitle}</h2>
+              <p className="mt-2 max-w-2xl text-sm text-[var(--muted-ink)]">{buyerHeaderDescription}</p>
             </div>
           </div>
         ) : (
@@ -1506,68 +1471,27 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       <div className="surface-panel flex flex-col gap-4 rounded-[20px] px-4 py-3 md:flex-row md:items-center md:justify-between">
         {isClient && (
           <div className="flex w-full flex-col gap-4">
-            <div className="flex justify-end">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <Input
                 type="text"
                 placeholder="Search merchants, branches, or products..."
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="h-10 w-full lg:max-w-md"
+                className="h-10 w-full md:max-w-xl"
               />
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={goBuyerHome} className="h-10 min-w-[110px]">
+                  Home
+                </Button>
+                <Button variant="outline" onClick={goBuyerBack} className="h-10 min-w-[110px]" disabled={!hasBuyerBackAction}>
+                  Back
+                </Button>
+              </div>
             </div>
           </div>
         )}
-        {((!isClient && resource.key === 'products' && visibleBranchOptions.length > 0)
-          || (isClient && resource.key !== 'merchants' && (merchantOptions.length > 0 || branchOptions.length > 0))) && (
+        {!isClient && resource.key === 'products' && visibleBranchOptions.length > 0 && (
           <div className="flex flex-wrap items-center gap-3">
-            {isClient && (
-              <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
-                <span>Merchant</span>
-                <select
-                  className="h-9 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
-                  value={selectedMerchantId}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setSelectedMerchantId(value);
-                    const nextBranchOptions = branchOptions.filter(
-                      (option) => !value || String(option.merchant_id) === String(value)
-                    );
-                    const nextBranchId =
-                      selectedBranchId && nextBranchOptions.some((opt) => String(opt.value) === String(selectedBranchId))
-                        ? selectedBranchId
-                        : '';
-                    if (nextBranchId !== selectedBranchId) {
-                      setSelectedBranchId(nextBranchId);
-                    }
-                    if (!nextBranchId) {
-                      setSelectedCategoryId('');
-                    }
-                    const params = new URLSearchParams(location.search);
-                    if (value) {
-                      params.set('merchant_id', value);
-                    } else {
-                      params.delete('merchant_id');
-                    }
-                    if (nextBranchId) {
-                      params.set('branch_id', nextBranchId);
-                    } else {
-                      params.delete('branch_id');
-                    }
-                    if (!nextBranchId) {
-                      params.delete('category_id');
-                    }
-                    navigate({ pathname: location.pathname, search: params.toString() });
-                  }}
-                >
-                  <option value="">All</option>
-                  {merchantOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
             <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
               <span>Branch</span>
               <select
@@ -1599,33 +1523,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 ))}
               </select>
             </label>
-            {isClient && resource.key === 'products' && (
-              <label className="flex items-center gap-2 text-sm text-[var(--muted-ink)]">
-                <span>Category</span>
-                <select
-                  className="h-9 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
-                  value={selectedCategoryId}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setSelectedCategoryId(value);
-                    const params = new URLSearchParams(location.search);
-                    if (value) {
-                      params.set('category_id', value);
-                    } else {
-                      params.delete('category_id');
-                    }
-                    navigate({ pathname: location.pathname, search: params.toString() });
-                  }}
-                >
-                  <option value="">All</option>
-                  {visibleCategoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
           </div>
         )}
       </div>
