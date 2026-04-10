@@ -22,10 +22,12 @@ export default function PublicStorefront() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const load = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const [productRows, cartData, methods] = await Promise.all([
         api.publicList('products'),
         api.publicList('cart'),
@@ -38,6 +40,11 @@ export default function PublicStorefront() {
       if (methodItems.length && !methodItems.some((method) => method.id === selectedPayment)) {
         setSelectedPayment(methodItems[0].id);
       }
+    } catch (err) {
+      setLoadError(err?.message || 'Failed to load storefront data.');
+      setProducts([]);
+      setPaymentMethods([]);
+      setCart({ items: [], total_amount: 0, total_quantity: 0 });
     } finally {
       setLoading(false);
     }
@@ -142,6 +149,11 @@ export default function PublicStorefront() {
                 onChange={(event) => setQuery(event.target.value)}
               />
             </div>
+            {loadError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {loadError}
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {loading ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-sm text-[var(--muted-ink)]">
