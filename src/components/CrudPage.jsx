@@ -620,9 +620,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         next[field.key] = '';
       }
     });
-    if (resource.key === 'users') {
-      next.role = row.role_name ? String(row.role_name).toLowerCase() : (next.role || 'merchant');
-    }
     setForm(next);
     setFieldErrors({});
     setError('');
@@ -725,13 +722,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       if (resource.key === 'users' && !Object.prototype.hasOwnProperty.call(payload, 'branch_id')) {
         payload.branch_id = null;
       }
-      if (resource.key === 'users') {
-        if (!payload.role && form.role) {
-          payload.role = String(form.role).toLowerCase();
-        }
-        delete payload.merchant_role_id;
-      }
-
       let productId = editRow?.id || null;
       if (editRow) {
         await api.update(resource.key, editRow.id, payload);
@@ -968,15 +958,35 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       (option) => String(option?.merchant_id ?? branchIdMerchantMap[String(option.value ?? option)] ?? '') === merchantId
     );
   }, [refOptions, form.merchant_id, branchIdMerchantMap]);
+  const filteredUserRoleOptions = useMemo(() => {
+    const options = refOptions.merchant_role_id || [];
+    const branchId = String(form.branch_id ?? '');
+    if (branchId) {
+      return options.filter((option) => String(option?.branch_id ?? '') === branchId);
+    }
+    const merchantId = String(form.merchant_id ?? '');
+    if (!merchantId) {
+      return options;
+    }
+    return options.filter((option) => {
+      const roleBranchId = String(option?.branch_id ?? '');
+      const roleMerchantId = branchIdMerchantMap[roleBranchId];
+      return roleMerchantId && String(roleMerchantId) === merchantId;
+    });
+  }, [refOptions, form.branch_id, form.merchant_id, branchIdMerchantMap]);
   useEffect(() => {
     if (resource.key !== 'users') {
       return;
     }
     const nextBranchOptions = filteredUserBranchOptions;
+    const nextRoleOptions = filteredUserRoleOptions;
     const branchValue = String(form.branch_id ?? '');
+    const roleValue = String(form.merchant_role_id ?? '');
     const branchAllowed =
       !branchValue || nextBranchOptions.some((option) => String(option.value ?? option) === branchValue);
-    if (branchAllowed) {
+    const roleAllowed =
+      !roleValue || nextRoleOptions.some((option) => String(option.value ?? option) === roleValue);
+    if (branchAllowed && roleAllowed) {
       return;
     }
     setForm((prev) => {
@@ -984,19 +994,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       if (!branchAllowed) {
         next.branch_id = '';
       }
+      if (!roleAllowed) {
+        next.merchant_role_id = '';
+      }
       return next;
     });
-  }, [resource.key, form.branch_id, filteredUserBranchOptions]);
-
-  useEffect(() => {
-    if (resource.key !== 'users') {
-      return;
-    }
-    if (!form.branch_id || form.role) {
-      return;
-    }
-    setForm((prev) => ({ ...prev, role: 'merchant' }));
-  }, [resource.key, form.branch_id, form.role]);
+  }, [resource.key, form.branch_id, form.merchant_role_id, filteredUserBranchOptions, filteredUserRoleOptions]);
 
   const filteredRows = useMemo(() => {
     let baseRows = [...rows].sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
@@ -1088,7 +1091,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           }
           return false;
         }
-        if (resource.key === 'users' && key === 'role') {
+        if (resource.key === 'users' && key === 'merchant_role_id') {
           return String(row.role_name ?? '').toLowerCase().includes(search);
         }
         return String(row[key] ?? '').toLowerCase().includes(search);
@@ -2401,6 +2404,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   <TableHead key={header} className="text-white">
                     {header === 'branch_id'
                       ? 'Branch'
+                      : header === 'merchant_role_id'
+                      ? 'Role'
                       : header === 'is_main'
                       ? 'Main'
                       : header === 'permission_count'
@@ -2512,8 +2517,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             </Badge>
                           ) : header === 'branch_id' && resource.key === 'products' ? (
                             <span className="cell-clamp">{branchLabelMap[String(row.branch_id)] || '-'}</span>
-                          ) : header === 'role' && resource.key === 'users' ? (
-                            <span className="cell-clamp">{formatValue(row.role_name || row.role)}</span>
+                          ) : header === 'merchant_role_id' && resource.key === 'users' ? (
+                            <span className="cell-clamp">{formatValue(row.role_name || row.merchant_role_id)}</span>
                           ) : header === 'is_main' && resource.key === 'branches' ? (
                             <span className="cell-clamp">{row.is_main ? 'Yes' : 'No'}</span>
                           ) : header === 'status' ? (
@@ -2689,6 +2694,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 let options = field.ref ? refOptions[field.key] || [] : field.options || [];
                 if (resource.key === 'users' && field.key === 'branch_id') {
                   options = filteredUserBranchOptions;
+                }
+                if (resource.key === 'users' && field.key === 'merchant_role_id') {
+                  options = filteredUserRoleOptions;
                 }
                 const hasError = Boolean(fieldErrors[field.key]);
                 return (

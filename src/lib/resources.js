@@ -186,11 +186,11 @@ const resources = {
           refLabel: 'name'
         },
         {
-          key: 'role',
+          key: 'merchant_role_id',
           label: 'Role',
           type: 'select',
-          options: ['admin', 'merchant', 'buyer'],
-          defaultValue: 'merchant',
+          ref: 'branch-roles',
+          refLabel: 'name',
           required: true
         },
         { key: 'email', label: 'Email', type: 'email', required: true },
