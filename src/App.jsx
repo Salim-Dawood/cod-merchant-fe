@@ -141,7 +141,15 @@ export default function App() {
 
   const allowedRoutes = useMemo(() => {
     if (authType === 'client') {
-      return routes.filter((route) => route.path === '/merchant/merchants');
+      const clientAllowed = new Set([
+        '/merchant/dashboard',
+        '/merchant/merchants',
+        '/merchant/branches',
+        '/merchant/products',
+        '/merchant/cart',
+        '/merchant/checkout'
+      ]);
+      return routes.filter((route) => clientAllowed.has(route.path));
     }
     if (authType === 'merchant') {
       const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';

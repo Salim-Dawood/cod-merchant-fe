@@ -15,12 +15,15 @@ const sections = [
   {
     title: 'Merchant',
     links: [
+      { label: 'Dashboard', to: '/merchant/dashboard', permission: 'view-merchant', icon: 'chart' },
       { label: 'Merchants', to: '/merchant/merchants', permission: 'view-merchant', icon: 'store' },
       { label: 'Branches', to: '/merchant/branches', permission: 'view-branch', icon: 'branch' },
       { label: 'Users', to: '/merchant/users', permission: 'view-user', icon: 'user' },
       { label: 'Branch Roles', to: '/merchant/branch-roles', permission: 'view-branch-role', icon: 'id' },
       { label: 'Categories', to: '/merchant/categories', permission: 'view-category', icon: 'grid' },
-      { label: 'Products', to: '/merchant/products', permission: 'view-product', icon: 'stack' }
+      { label: 'Products', to: '/merchant/products', permission: 'view-product', icon: 'stack' },
+      { label: 'Cart', to: '/merchant/cart', permission: 'view-product', icon: 'archive' },
+      { label: 'Checkout', to: '/merchant/checkout', permission: 'view-product', icon: 'receipt' }
     ]
   }
 ];
@@ -99,7 +102,15 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
   const visibleLinks = visibleSections.flatMap((section) => {
     if (section.title === 'Merchant') {
       if (isClient) {
-        return section.links.filter((link) => link.to === '/merchant/merchants');
+        const clientLinks = new Set([
+          '/merchant/dashboard',
+          '/merchant/merchants',
+          '/merchant/branches',
+          '/merchant/products',
+          '/merchant/cart',
+          '/merchant/checkout'
+        ]);
+        return section.links.filter((link) => clientLinks.has(link.to));
       }
       return section.links;
     }
@@ -185,7 +196,18 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
               {visibleSections.map((section) => {
                 const sectionLinks =
                   section.title === 'Merchant'
-                    ? section.links
+                    ? (isClient
+                      ? section.links.filter((link) =>
+                          [
+                            '/merchant/dashboard',
+                            '/merchant/merchants',
+                            '/merchant/branches',
+                            '/merchant/products',
+                            '/merchant/cart',
+                            '/merchant/checkout'
+                          ].includes(link.to)
+                        )
+                      : section.links)
                     : section.links.filter((link) => !link.permission || permissions.includes(link.permission));
 
                 if (sectionLinks.length === 0) {

@@ -71,6 +71,14 @@ function getFieldDefaultValue(field) {
   return '';
 }
 
+function formatCurrency(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount)) {
+    return '$0.00';
+  }
+  return `$${amount.toFixed(2)}`;
+}
+
 function FlagChip({ title, url }) {
   if (url) {
     return (
@@ -211,10 +219,17 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [branchMerchantMap, setBranchMerchantMap] = useState({});
   const [clientProducts, setClientProducts] = useState([]);
-  const [carouselIndex, setCarouselIndex] = useState({});
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('');
   const [buyerOrders, setBuyerOrders] = useState([]);
+  const [buyerCart, setBuyerCart] = useState({
+    cart_id: null,
+    status: 'active',
+    items: [],
+    item_count: 0,
+    total_quantity: 0,
+    total_amount: 0
+  });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
@@ -351,13 +366,19 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       }
       if (isBuyerAuth) {
         try {
-          const [methods, orders] = await Promise.all([
+          const [methods, orders, cart] = await Promise.all([
             api.list('buyer/payment-methods'),
-            api.list('buyer/orders')
+            api.list('buyer/orders'),
+            api.list('buyer/cart')
           ]);
           const methodItems = Array.isArray(methods) ? methods : [];
           setPaymentMethods(methodItems);
           setBuyerOrders(Array.isArray(orders) ? orders : []);
+          setBuyerCart(
+            cart && typeof cart === 'object'
+              ? cart
+              : { cart_id: null, status: 'active', items: [], item_count: 0, total_quantity: 0, total_amount: 0 }
+          );
           if (methodItems.length > 0) {
             const defaultMethod = methodItems.find((method) => Boolean(method.is_default));
             setSelectedPaymentMethodId(String((defaultMethod || methodItems[0]).id));
@@ -367,11 +388,13 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         } catch {
           setPaymentMethods([]);
           setBuyerOrders([]);
+          setBuyerCart({ cart_id: null, status: 'active', items: [], item_count: 0, total_quantity: 0, total_amount: 0 });
           setSelectedPaymentMethodId('');
         }
       } else {
         setPaymentMethods([]);
         setBuyerOrders([]);
+        setBuyerCart({ cart_id: null, status: 'active', items: [], item_count: 0, total_quantity: 0, total_amount: 0 });
         setSelectedPaymentMethodId('');
       }
       if (resource.key === 'products') {
@@ -420,6 +443,26 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         });
         setProductImageMap(imageMap);
         setClientProducts([]);
+      } else if (resource.key === 'dashboard') {
+        const [products, branches] = await Promise.all([
+          api.list('products'),
+          api.list('branches')
+        ]);
+        setRows(Array.isArray(products) ? products : []);
+        const branchItems = Array.isArray(branches) ? branches : [];
+        if (!isClient) {
+          setBranchOptions(
+            branchItems.map((branch) => ({
+              value: String(branch.id),
+              merchant_id: String(branch.merchant_id ?? ''),
+              label: branch.name || `Branch #${branch.id}`
+            }))
+          );
+        }
+        setCategoryOptions([]);
+        setProductCategoryMap({});
+        setProductImageMap({});
+        setClientProducts([]);
       } else if (resource.key === 'categories' && isClient) {
         const [categories, products, productCategories] = await Promise.all([
           api.list('categories'),
@@ -441,8 +484,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         });
         setProductCategoryMap(categoryMap);
       } else {
-        const data = await api.list(resource.key);
-        setRows(Array.isArray(data) ? data : []);
+        if (resource.key === 'cart' || resource.key === 'checkout' || resource.key === 'dashboard') {
+          setRows([]);
+        } else {
+          const data = await api.list(resource.key);
+          setRows(Array.isArray(data) ? data : []);
+        }
         setCategoryOptions([]);
         setProductCategoryMap({});
         setProductImageMap({});
@@ -573,6 +620,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         next[field.key] = '';
       }
     });
+    if (resource.key === 'users') {
+      next.role = row.role_name ? String(row.role_name).toLowerCase() : (next.role || 'merchant');
+    }
     setForm(next);
     setFieldErrors({});
     setError('');
@@ -674,6 +724,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       }
       if (resource.key === 'users' && !Object.prototype.hasOwnProperty.call(payload, 'branch_id')) {
         payload.branch_id = null;
+      }
+      if (resource.key === 'users') {
+        if (!payload.role && form.role) {
+          payload.role = String(form.role).toLowerCase();
+        }
+        delete payload.merchant_role_id;
       }
 
       let productId = editRow?.id || null;
@@ -912,32 +968,15 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       (option) => String(option?.merchant_id ?? branchIdMerchantMap[String(option.value ?? option)] ?? '') === merchantId
     );
   }, [refOptions, form.merchant_id, branchIdMerchantMap]);
-  const filteredUserRoleOptions = useMemo(() => {
-    const options = refOptions.merchant_role_id || [];
-    const merchantId = String(form.merchant_id ?? '');
-    if (!merchantId) {
-      return options;
-    }
-    return options.filter((option) => {
-      const roleBranchId = String(option?.branch_id ?? '');
-      const roleMerchantId = branchIdMerchantMap[roleBranchId];
-      return roleMerchantId && String(roleMerchantId) === merchantId;
-    });
-  }, [refOptions, form.merchant_id, branchIdMerchantMap]);
-
   useEffect(() => {
     if (resource.key !== 'users') {
       return;
     }
     const nextBranchOptions = filteredUserBranchOptions;
-    const nextRoleOptions = filteredUserRoleOptions;
     const branchValue = String(form.branch_id ?? '');
-    const roleValue = String(form.merchant_role_id ?? '');
     const branchAllowed =
       !branchValue || nextBranchOptions.some((option) => String(option.value ?? option) === branchValue);
-    const roleAllowed =
-      !roleValue || nextRoleOptions.some((option) => String(option.value ?? option) === roleValue);
-    if (branchAllowed && roleAllowed) {
+    if (branchAllowed) {
       return;
     }
     setForm((prev) => {
@@ -945,12 +984,19 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       if (!branchAllowed) {
         next.branch_id = '';
       }
-      if (!roleAllowed) {
-        next.merchant_role_id = '';
-      }
       return next;
     });
-  }, [resource.key, form.branch_id, form.merchant_role_id, filteredUserBranchOptions, filteredUserRoleOptions]);
+  }, [resource.key, form.branch_id, filteredUserBranchOptions]);
+
+  useEffect(() => {
+    if (resource.key !== 'users') {
+      return;
+    }
+    if (!form.branch_id || form.role) {
+      return;
+    }
+    setForm((prev) => ({ ...prev, role: 'merchant' }));
+  }, [resource.key, form.branch_id, form.role]);
 
   const filteredRows = useMemo(() => {
     let baseRows = [...rows].sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
@@ -1042,6 +1088,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
           }
           return false;
         }
+        if (resource.key === 'users' && key === 'role') {
+          return String(row.role_name ?? '').toLowerCase().includes(search);
+        }
         return String(row[key] ?? '').toLowerCase().includes(search);
       })
     );
@@ -1130,39 +1179,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     return map;
   }, [branchOptions]);
 
-  const scopedProductIds = useMemo(() => {
-    if (!isClient) {
-      return [];
-    }
-    let items = resource.key === 'products' ? rows : clientProducts;
-    if (selectedBranchId) {
-      items = items.filter((row) => String(row.branch_id) === String(selectedBranchId));
-    }
-    if (selectedMerchantId) {
-      items = items.filter((row) => {
-        const merchantId = branchMerchantMap[String(row.branch_id)];
-        return merchantId && String(merchantId) === String(selectedMerchantId);
-      });
-    }
-    return items.map((row) => row.id);
-  }, [rows, clientProducts, isClient, selectedBranchId, selectedMerchantId, branchMerchantMap, resource.key]);
-
-  const visibleCategoryOptions = useMemo(() => {
-    if (!isClient) {
-      return [];
-    }
-    if (scopedProductIds.length === 0) {
-      return categoryOptions;
-    }
-    const allowed = new Set();
-    Object.values(productCategoryMap).flat().forEach((link) => {
-      if (scopedProductIds.includes(link.product_id)) {
-        allowed.add(String(link.category_id));
-      }
-    });
-    return categoryOptions.filter((option) => allowed.has(String(option.value)));
-  }, [categoryOptions, isClient, scopedProductIds, productCategoryMap]);
-
   const visibleBranchOptions = useMemo(() => {
     if (!isClient && resource.key === 'products') {
       return (refOptions.branch_id || []).map((option) => ({
@@ -1185,7 +1201,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     if (resource.key === 'merchants') {
       return '';
     }
-    if (resource.key === 'branches' || resource.key === 'categories' || resource.key === 'products') {
+    if (resource.key === 'dashboard' || resource.key === 'branches' || resource.key === 'categories' || resource.key === 'products' || resource.key === 'cart' || resource.key === 'checkout') {
       return '';
     }
     if (!selectedMerchantId) {
@@ -1195,7 +1211,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       return 'Select a branch first.';
     }
     return '';
-  }, [isClient, resource.key, selectedMerchantId, selectedBranchId, selectedCategoryId]);
+  }, [isClient, resource.key, selectedMerchantId, selectedBranchId]);
 
   const buyerHeaderTitle = useMemo(() => {
     if (!isClient) {
@@ -1204,11 +1220,20 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     if (resource.key === 'merchants') {
       return 'Choose a merchant';
     }
+    if (resource.key === 'dashboard') {
+      return 'Main overview';
+    }
     if (resource.key === 'branches') {
       return 'Choose a branch';
     }
     if (resource.key === 'products') {
       return 'Browse items';
+    }
+    if (resource.key === 'cart') {
+      return 'Your cart';
+    }
+    if (resource.key === 'checkout') {
+      return 'Checkout';
     }
     if (resource.key === 'categories') {
       return 'Browse categories';
@@ -1223,6 +1248,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     if (resource.key === 'merchants') {
       return 'Start by selecting the merchant you want to shop from.';
     }
+    if (resource.key === 'dashboard') {
+      return 'Quick access to products, branches, and cart status.';
+    }
     if (resource.key === 'branches') {
       return selectedMerchantId
         ? `Showing branches for ${merchantLabelMap[String(selectedMerchantId)] || 'the selected merchant'}.`
@@ -1235,6 +1263,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     }
     if (resource.key === 'categories') {
       return 'Category filters are available if you want to narrow the product list.';
+    }
+    if (resource.key === 'cart') {
+      return 'Review quantities and totals before checkout.';
+    }
+    if (resource.key === 'checkout') {
+      return 'Confirm payment method and place your order.';
     }
     return '';
   }, [isClient, resource.key, selectedMerchantId, selectedBranchId, merchantLabelMap, buyerBranchLabelMap]);
@@ -1260,6 +1294,14 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       } else {
         goBuyerHome();
       }
+      return;
+    }
+    if (resource.key === 'cart') {
+      navigate('/merchant/products');
+      return;
+    }
+    if (resource.key === 'checkout') {
+      navigate('/merchant/cart');
       return;
     }
     goBuyerHome();
@@ -1331,33 +1373,24 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     );
   }, [rolePermissionOptions, rolePermQuery]);
 
-  const getCarouselIndex = (id, length) => {
-    const current = carouselIndex[id] ?? 0;
-    if (!length) {
-      return 0;
-    }
-    return current % length;
-  };
-
-  const setCarousel = (id, nextIndex) => {
-    setCarouselIndex((prev) => ({
-      ...prev,
-      [id]: nextIndex
-    }));
-  };
-
   const refreshBuyerCommerceData = useCallback(async () => {
     if (!isBuyerAuth) {
       return;
     }
     try {
-      const [methods, orders] = await Promise.all([
+      const [methods, orders, cart] = await Promise.all([
         api.list('buyer/payment-methods'),
-        api.list('buyer/orders')
+        api.list('buyer/orders'),
+        api.list('buyer/cart')
       ]);
       const methodItems = Array.isArray(methods) ? methods : [];
       setPaymentMethods(methodItems);
       setBuyerOrders(Array.isArray(orders) ? orders : []);
+      setBuyerCart(
+        cart && typeof cart === 'object'
+          ? cart
+          : { cart_id: null, status: 'active', items: [], item_count: 0, total_quantity: 0, total_amount: 0 }
+      );
       if (methodItems.length > 0) {
         const currentExists = methodItems.some((method) => String(method.id) === String(selectedPaymentMethodId));
         if (!currentExists) {
@@ -1403,33 +1436,70 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     }
   };
 
-  const placeOrder = async (row) => {
-    const quantityRaw = window.prompt('Quantity', String(row.min_order_quantity || 1));
-    if (!quantityRaw) {
-      return;
-    }
-    const quantity = Number(quantityRaw);
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      window.alert('Quantity must be a positive integer.');
-      return;
-    }
+  const addToCart = async (row) => {
     try {
-      const payload = {
+      const cart = await api.create('buyer/cart/items', {
         product_id: row.id,
-        quantity
-      };
-      if (selectedPaymentMethodId) {
-        payload.payment_method_id = Number(selectedPaymentMethodId);
-      }
-      const order = await api.create('buyer/orders', payload);
-      await refreshBuyerCommerceData();
-      window.alert(`Order placed: ${order?.order_number || order?.id || 'success'}`);
+        quantity: 1
+      });
+      setBuyerCart(cart || { cart_id: null, status: 'active', items: [], item_count: 0, total_quantity: 0, total_amount: 0 });
     } catch (err) {
-      window.alert(err.message || 'Failed to place order.');
+      window.alert(err.message || 'Failed to add item to cart.');
     }
   };
 
-  const statusPills = Object.entries(stats.statusCounts || {}).slice(0, 3);
+  const updateCartQuantity = async (itemId, nextQuantity) => {
+    if (!Number.isInteger(nextQuantity) || nextQuantity < 1) {
+      return;
+    }
+    try {
+      const cart = await api.update('buyer/cart/items', itemId, { quantity: nextQuantity });
+      setBuyerCart(cart || { cart_id: null, status: 'active', items: [], item_count: 0, total_quantity: 0, total_amount: 0 });
+    } catch (err) {
+      window.alert(err.message || 'Failed to update quantity.');
+    }
+  };
+
+  const removeFromCart = async (itemId) => {
+    try {
+      const cart = await api.remove('buyer/cart/items', itemId);
+      setBuyerCart(cart || { cart_id: null, status: 'active', items: [], item_count: 0, total_quantity: 0, total_amount: 0 });
+    } catch (err) {
+      window.alert(err.message || 'Failed to remove item.');
+    }
+  };
+
+  const clearBuyerCart = async () => {
+    try {
+      const items = Array.isArray(buyerCart.items) ? buyerCart.items : [];
+      if (items.length === 0) {
+        return;
+      }
+      await Promise.all(items.map((item) => api.remove('buyer/cart/items', item.id)));
+      await refreshBuyerCommerceData();
+    } catch (err) {
+      window.alert(err.message || 'Failed to clear cart.');
+    }
+  };
+
+  const confirmCheckout = async () => {
+    if (!buyerCart.items?.length) {
+      window.alert('Your cart is empty.');
+      return;
+    }
+    try {
+      const payload = {};
+      if (selectedPaymentMethodId) {
+        payload.payment_method_id = Number(selectedPaymentMethodId);
+      }
+      const order = await api.create('buyer/checkout', payload);
+      await refreshBuyerCommerceData();
+      window.alert(`Order confirmed: ${order?.order_number || order?.id || 'success'}`);
+      navigate('/merchant/products');
+    } catch (err) {
+      window.alert(err.message || 'Failed to checkout.');
+    }
+  };
 
   const handleAvatarSelect = () => {
     if (!editRow?.id || !avatarUploadEndpoint) {
@@ -1594,6 +1664,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 />
                 {resource.key === 'products' && isBuyerAuth && (
                   <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="secondary" onClick={() => navigate('/merchant/cart')} className="h-10">
+                      Cart ({buyerCart.total_quantity || 0})
+                    </Button>
                     <select
                       className="h-10 min-w-[200px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
                       value={selectedPaymentMethodId}
@@ -2042,88 +2115,144 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 </>
               )}
             </div>
-          ) : isClient && resource.key == 'products' ? (
-            <div className="flex flex-col gap-6 p-4 sm:p-6">
+          ) : resource.key === 'dashboard' ? (
+            <div className="grid gap-4 p-4 sm:p-6 md:grid-cols-3">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+                <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-ink)]">Products</div>
+                <div className="mt-2 text-3xl font-semibold text-[var(--ink)]">{rows.length}</div>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+                <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-ink)]">Branches</div>
+                <div className="mt-2 text-3xl font-semibold text-[var(--ink)]">
+                  {branchOptions.length || (refOptions.branch_id || []).length}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+                <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-ink)]">Cart Items</div>
+                <div className="mt-2 text-3xl font-semibold text-[var(--ink)]">{buyerCart.total_quantity || 0}</div>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 md:col-span-2">
+                <div className="text-sm font-semibold text-[var(--ink)]">General Overview</div>
+                <p className="mt-2 text-sm text-[var(--muted-ink)]">
+                  View products, branches, and cart status from one place.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => navigate('/merchant/products')}>Browse Products</Button>
+                  <Button size="sm" variant="outline" onClick={() => navigate('/merchant/branches')}>Branches</Button>
+                  <Button size="sm" variant="outline" onClick={() => navigate('/merchant/cart')}>Cart</Button>
+                </div>
+              </div>
+            </div>
+          ) : resource.key === 'cart' ? (
+            <div className="flex flex-col gap-4 p-4 sm:p-6">
+              {!isBuyerAuth ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Cart is available for buyer accounts.
+                </div>
+              ) : (buyerCart.items || []).length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Your cart is empty.
+                </div>
+              ) : (
+                <>
+                  {(buyerCart.items || []).map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-base font-semibold text-[var(--ink)]">
+                            {item.name} x{item.quantity}
+                          </div>
+                          <div className="mt-1 text-sm text-[var(--muted-ink)]">
+                            {formatCurrency(item.unit_price)} each
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, Math.max(1, Number(item.quantity || 1) - 1))}>-</Button>
+                          <span className="min-w-[2rem] text-center text-sm">{item.quantity}</span>
+                          <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, Number(item.quantity || 1) + 1)}>+</Button>
+                          <Button size="sm" variant="destructive" onClick={() => removeFromCart(item.id)}>Remove</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[var(--muted-ink)]">Total</span>
+                      <span className="text-xl font-semibold text-[var(--ink)]">{formatCurrency(buyerCart.total_amount)}</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => navigate('/merchant/checkout')}>Proceed to Checkout</Button>
+                      <Button size="sm" variant="outline" onClick={clearBuyerCart}>Clear Cart</Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : resource.key === 'checkout' ? (
+            <div className="flex flex-col gap-4 p-4 sm:p-6">
+              {!isBuyerAuth ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Checkout is available for buyer accounts.
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                    <div className="text-sm font-semibold text-[var(--ink)]">Cart Summary</div>
+                    {(buyerCart.items || []).length === 0 ? (
+                      <div className="mt-2 text-sm text-[var(--muted-ink)]">No items in cart.</div>
+                    ) : (
+                      <div className="mt-3 grid gap-2">
+                        {(buyerCart.items || []).map((item) => (
+                          <div key={`checkout-${item.id}`} className="flex items-center justify-between text-sm">
+                            <span>{item.name} x{item.quantity}</span>
+                            <span>{formatCurrency(item.subtotal)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-4 border-t border-[var(--border)] pt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--muted-ink)]">Total price</span>
+                        <span className="text-xl font-semibold text-[var(--ink)]">{formatCurrency(buyerCart.total_amount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                    <div className="text-sm font-semibold text-[var(--ink)]">Payment Method</div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <select
+                        className="h-10 min-w-[220px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
+                        value={selectedPaymentMethodId}
+                        onChange={(event) => setSelectedPaymentMethodId(event.target.value)}
+                      >
+                        <option value="">No payment method</option>
+                        {paymentMethods.map((method) => (
+                          <option key={method.id} value={method.id}>
+                            {method.type}{method.card_last4 ? ` •••• ${method.card_last4}` : ''}{method.is_default ? ' (default)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <Button variant="outline" onClick={addPaymentMethod}>Add Payment Method</Button>
+                    </div>
+                    <div className="mt-4">
+                      <Button variant="secondary" onClick={confirmCheckout} disabled={(buyerCart.items || []).length === 0}>
+                        Confirm Order
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : isClient && resource.key === 'products' ? (
+            <div className="flex flex-col gap-4 p-4 sm:p-6">
               {loading ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
                   Loading...
                 </div>
               ) : !selectedMerchantId ? (
-                filteredClientMerchantRows.length === 0 ? (
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
-                    No merchants found.
-                  </div>
-                ) : (
-                  <>
-                    {paginatedClientMerchantRows.map((row) => {
-                      const statusValue = row.status ? String(row.status).toLowerCase() : '';
-                      const statusClass =
-                        statusValue === 'active'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : statusValue === 'pending'
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : statusValue === 'suspended'
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
-
-                      return (
-                        <div
-                          key={row.id}
-                          className="flex h-full flex-col gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
-                        >
-                          <div className="flex items-start gap-4">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-lg font-semibold text-[var(--accent-strong)]">
-                              {getInitials(row.name)}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-lg font-semibold text-[var(--ink)] break-words">
-                                {row.name || `Merchant #${row.id}`}
-                              </div>
-                              <div className="mt-1 text-xs text-[var(--muted-ink)]">
-                                ID #{row.id} {row.merchant_code ? `• ${row.merchant_code}` : ''}
-                              </div>
-                              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                <Badge className={`border ${statusClass}`}>
-                                  {formatValue(row.status)}
-                                </Badge>
-                                {row.city && (
-                                  <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                    {row.city}
-                                  </Badge>
-                                )}
-                                {row.country && (
-                                  <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                    {row.country}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="grid gap-3 text-sm text-[var(--muted-ink)]">
-                            <div>
-                              <div className="text-[11px] uppercase tracking-[0.24em]">Email</div>
-                              <div className="mt-1 break-words text-[var(--ink)]">{row.email || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-[11px] uppercase tracking-[0.24em]">Address</div>
-                              <div className="mt-1 text-[var(--ink)]">{row.address || '-'}</div>
-                            </div>
-                          </div>
-                          <div className="mt-auto pt-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="w-full justify-center"
-                              onClick={() => navigate(`/merchant/branches?merchant_id=${row.id}`)}
-                            >
-                              View Branches
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Select a merchant first.
+                </div>
               ) : clientGateMessage ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
                   {clientGateMessage}
@@ -2133,153 +2262,24 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   No products found.
                 </div>
               ) : (
-                <>
-                  <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted-ink)]">
-                          Product carousel
+                <div className="grid gap-3">
+                  {paginatedRows.map((row) => (
+                    <div key={row.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-base font-semibold text-[var(--ink)]">{row.name || `Product #${row.id}`}</div>
+                          <div className="mt-1 text-sm text-[var(--muted-ink)]">{row.description || 'No description'}</div>
+                          <div className="mt-2 text-lg font-semibold text-[var(--ink)]">{formatCurrency(row.base_price)}</div>
                         </div>
-                        <div className="mt-2 text-sm text-[var(--muted-ink)]">
-                          Swipe or scroll horizontally to move through the items for this branch.
-                        </div>
-                      </div>
-                      <div className="rounded-full bg-[var(--surface-soft)] px-4 py-2 text-xs font-semibold text-[var(--muted-ink)]">
-                        {paginatedRows.length} cards on this page
+                        {isBuyerAuth && (
+                          <Button size="sm" variant="secondary" onClick={() => addToCart(row)}>
+                            Add to Cart
+                          </Button>
+                        )}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 no-scrollbar">
-                    {paginatedRows.map((row) => {
-                      const statusValue = row.status ? String(row.status).toLowerCase() : '';
-                      const statusClass =
-                        statusValue === 'active'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : statusValue === 'pending'
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : statusValue === 'suspended'
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : 'bg-[var(--surface)] text-[var(--muted-ink)] border-[var(--border)]';
-                      const categories = (productCategoryMap[row.id] || []).map((link) => {
-                        const key = link.category_id ? String(link.category_id) : '';
-                        return categoryLabelMap[key] || `#${link.category_id}`;
-                      });
-                      const images = productImageMap[row.id] || [];
-                      const imageIndex = getCarouselIndex(row.id, images.length);
-                      const activeImage = images[imageIndex];
-                      const coverUrl = activeImage?.url ? String(activeImage.url) : '';
-                      const branchLabel =
-                        row.branch_id !== undefined
-                          ? branchLabelMap[String(row.branch_id)] || `#${row.branch_id}`
-                          : 'Unassigned';
-                      const branchFlagUrl = branchIdFlagMap[String(row.branch_id)] || '';
-
-                      return (
-                        <article
-                          key={row.id}
-                          className="flex min-h-[520px] min-w-[300px] snap-start flex-col overflow-hidden rounded-[30px] border border-[var(--border)] bg-[var(--surface)] shadow-sm sm:min-w-[360px] lg:min-w-[420px]"
-                        >
-                          <div className="relative h-64 bg-[var(--accent-soft)]">
-                            {coverUrl ? (
-                              <img
-                                src={coverUrl}
-                                alt={row.name || `Product ${row.id}`}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-3xl font-semibold text-[var(--accent-strong)]">
-                                {getInitials(row.name)}
-                              </div>
-                            )}
-                            {images.length > 1 && (
-                              <>
-                                <button
-                                  type="button"
-                                  className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg font-semibold text-[var(--ink)] shadow-sm"
-                                  onClick={() => setCarousel(row.id, (imageIndex - 1 + images.length) % images.length)}
-                                >
-                                  {'<'}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg font-semibold text-[var(--ink)] shadow-sm"
-                                  onClick={() => setCarousel(row.id, (imageIndex + 1) % images.length)}
-                                >
-                                  {'>'}
-                                </button>
-                              </>
-                            )}
-                            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-5 py-4 text-white">
-                              <div>
-                                <div className="text-[11px] uppercase tracking-[0.22em] text-white/70">Product</div>
-                                <div className="mt-1 text-xl font-semibold">{row.name || `Product #${row.id}`}</div>
-                              </div>
-                              {images.length > 1 && (
-                                <div className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-                                  {imageIndex + 1}/{images.length}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex flex-1 flex-col gap-4 p-5">
-                            <div className="flex flex-wrap gap-2 text-xs">
-                              <Badge className={`border ${statusClass}`}>
-                                {formatValue(row.status)}
-                              </Badge>
-                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                <span className="inline-flex items-center gap-2">
-                                  <FlagChip title={branchLabel} url={branchFlagUrl} />
-                                  {branchLabel}
-                                </span>
-                              </Badge>
-                              <Badge className="border border-[var(--border)] bg-[var(--surface)]">
-                                Slug: {row.slug || '-'}
-                              </Badge>
-                            </div>
-                            <div className="text-sm leading-6 text-[var(--muted-ink)]">
-                              {row.description || 'No description provided.'}
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
-                                <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">MOQ</div>
-                                <div className="mt-1 text-sm font-semibold text-[var(--ink)]">{row.moq || '-'}</div>
-                              </div>
-                              <div className="rounded-[20px] bg-[var(--surface-soft)] px-4 py-3">
-                                <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted-ink)]">Images</div>
-                                <div className="mt-1 text-sm font-semibold text-[var(--ink)]">{images.length}</div>
-                              </div>
-                            </div>
-                            <div className="mt-auto flex flex-wrap gap-2">
-                              {categories.length === 0 ? (
-                                <Badge className="border border-dashed border-[var(--border)] bg-transparent">
-                                  No categories
-                                </Badge>
-                              ) : (
-                                categories.map((label) => (
-                                  <Badge key={`${row.id}-${label}`} className="border border-[var(--border)] bg-[var(--surface)]">
-                                    {label}
-                                  </Badge>
-                                ))
-                              )}
-                            </div>
-                            {isBuyerAuth && (
-                              <div className="pt-2">
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  className="w-full justify-center"
-                                  onClick={() => placeOrder(row)}
-                                >
-                                  Order This Product
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </>
+                  ))}
+                </div>
               )}
             </div>
           ) : resource.key === 'platform-clients' ? (
@@ -2512,6 +2512,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                             </Badge>
                           ) : header === 'branch_id' && resource.key === 'products' ? (
                             <span className="cell-clamp">{branchLabelMap[String(row.branch_id)] || '-'}</span>
+                          ) : header === 'role' && resource.key === 'users' ? (
+                            <span className="cell-clamp">{formatValue(row.role_name || row.role)}</span>
                           ) : header === 'is_main' && resource.key === 'branches' ? (
                             <span className="cell-clamp">{row.is_main ? 'Yes' : 'No'}</span>
                           ) : header === 'status' ? (
@@ -2687,9 +2689,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                 let options = field.ref ? refOptions[field.key] || [] : field.options || [];
                 if (resource.key === 'users' && field.key === 'branch_id') {
                   options = filteredUserBranchOptions;
-                }
-                if (resource.key === 'users' && field.key === 'merchant_role_id') {
-                  options = filteredUserRoleOptions;
                 }
                 const hasError = Boolean(fieldErrors[field.key]);
                 return (

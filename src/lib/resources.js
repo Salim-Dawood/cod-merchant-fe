@@ -88,6 +88,14 @@ const resources = {
   ],
   merchant: [
     {
+      key: 'dashboard',
+      title: 'Dashboard',
+      permissions: {
+        read: 'view-merchant'
+      },
+      fields: []
+    },
+    {
       key: 'merchants',
       title: 'Merchants',
       permissions: {
@@ -178,11 +186,12 @@ const resources = {
           refLabel: 'name'
         },
         {
-          key: 'merchant_role_id',
-          label: 'Merchant Role',
+          key: 'role',
+          label: 'Role',
           type: 'select',
-          ref: 'branch-roles',
-          refLabel: 'name'
+          options: ['admin', 'merchant', 'buyer'],
+          defaultValue: 'merchant',
+          required: true
         },
         { key: 'email', label: 'Email', type: 'email', required: true },
         { key: 'avatar_url', label: 'Photo URL', type: 'text' },
@@ -235,6 +244,8 @@ const resources = {
         { key: 'name', label: 'Name', type: 'text', required: true },
         { key: 'slug', label: 'Slug', type: 'text', required: true },
         { key: 'description', label: 'Description', type: 'text' },
+        { key: 'provider_name', label: 'Provider / Supplier', type: 'text' },
+        { key: 'base_price', label: 'Price', type: 'number', required: true },
         { key: 'moq', label: 'MOQ', type: 'number' },
         {
           key: 'status',
@@ -249,6 +260,22 @@ const resources = {
         { key: 'updated_by', label: 'Updated By', type: 'number', readOnly: true },
         { key: 'updated_at', label: 'Updated At', type: 'text', readOnly: true }
       ]
+    },
+    {
+      key: 'cart',
+      title: 'Cart',
+      permissions: {
+        read: 'view-product'
+      },
+      fields: []
+    },
+    {
+      key: 'checkout',
+      title: 'Checkout',
+      permissions: {
+        read: 'view-product'
+      },
+      fields: []
     },
     {
       key: 'categories',
