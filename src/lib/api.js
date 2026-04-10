@@ -9,6 +9,7 @@ async function request(path, options = {}) {
     && !path.startsWith('/platform/')
     && !path.startsWith('/merchant/')
     && !path.startsWith('/buyer/')
+    && !path.startsWith('/public/')
       ? `/merchant${path}`
       : path;
   const url = `${API_BASE_URL}${scopedPath}`;
@@ -64,6 +65,18 @@ export const api = {
     body: JSON.stringify(data)
   }),
   remove: (resource, id) => request(`/${resource}/${id}`, {
+    method: 'DELETE'
+  }),
+  publicList: (resource) => request(`/public/${resource}`),
+  publicCreate: (resource, data) => request(`/public/${resource}`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  publicUpdate: (resource, id, data) => request(`/public/${resource}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  publicRemove: (resource, id) => request(`/public/${resource}/${id}`, {
     method: 'DELETE'
   })
 };

@@ -5,6 +5,7 @@ import CrudPage from './components/CrudPage';
 import resources from './lib/resources';
 import { auth } from './lib/auth';
 import LoginPage from './pages/Login';
+import PublicStorefront from './pages/PublicStorefront';
 
 const routes = [
   ...resources.platform.map((resource) => ({
@@ -181,7 +182,7 @@ export default function App() {
                 profile={profile}
               />
             ) : (
-              <Navigate to="/login" replace />
+              <PublicStorefront />
             )
           ) : (
             <div className="flex min-h-screen items-center justify-center text-sm text-[var(--muted-ink)]">
