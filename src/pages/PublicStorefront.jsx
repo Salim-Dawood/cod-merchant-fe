@@ -28,23 +28,37 @@ export default function PublicStorefront() {
     try {
       setLoading(true);
       setLoadError('');
-      const [productRows, cartData, methods] = await Promise.all([
+      const [productsResult, cartResult, methodsResult] = await Promise.allSettled([
         api.publicList('products'),
         api.publicList('cart'),
         api.publicList('payment-methods')
       ]);
-      setProducts(Array.isArray(productRows) ? productRows : []);
-      setCart(cartData && typeof cartData === 'object' ? cartData : { items: [], total_amount: 0, total_quantity: 0 });
-      const methodItems = Array.isArray(methods) ? methods : [];
-      setPaymentMethods(methodItems);
-      if (methodItems.length && !methodItems.some((method) => method.id === selectedPayment)) {
-        setSelectedPayment(methodItems[0].id);
+
+      if (productsResult.status === 'fulfilled') {
+        setProducts(Array.isArray(productsResult.value) ? productsResult.value : []);
+      } else {
+        setProducts([]);
+        setLoadError(productsResult.reason?.message || 'Failed to load products.');
+      }
+
+      if (cartResult.status === 'fulfilled') {
+        const cartData = cartResult.value;
+        setCart(cartData && typeof cartData === 'object' ? cartData : { items: [], total_amount: 0, total_quantity: 0 });
+      } else {
+        setCart({ items: [], total_amount: 0, total_quantity: 0 });
+      }
+
+      if (methodsResult.status === 'fulfilled') {
+        const methodItems = Array.isArray(methodsResult.value) ? methodsResult.value : [];
+        setPaymentMethods(methodItems);
+        if (methodItems.length && !methodItems.some((method) => method.id === selectedPayment)) {
+          setSelectedPayment(methodItems[0].id);
+        }
+      } else {
+        setPaymentMethods([]);
       }
     } catch (err) {
-      setLoadError(err?.message || 'Failed to load storefront data.');
-      setProducts([]);
-      setPaymentMethods([]);
-      setCart({ items: [], total_amount: 0, total_quantity: 0 });
+      setLoadError(err?.message || 'Failed to load products.');
     } finally {
       setLoading(false);
     }
