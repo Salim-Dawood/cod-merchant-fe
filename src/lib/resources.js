@@ -246,7 +246,8 @@ const resources = {
         { key: 'description', label: 'Description', type: 'text' },
         { key: 'provider_name', label: 'Provider / Supplier', type: 'text' },
         { key: 'base_price', label: 'Price', type: 'number', required: true },
-        { key: 'moq', label: 'MOQ', type: 'number' },
+        { key: 'min_order_quantity', label: 'Min Order Qty', type: 'number' },
+        { key: 'max_order_quantity', label: 'Max Order Qty', type: 'number' },
         {
           key: 'status',
           label: 'Status',

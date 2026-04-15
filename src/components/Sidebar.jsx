@@ -22,8 +22,7 @@ const sections = [
       { label: 'Branch Roles', to: '/merchant/branch-roles', permission: 'view-branch-role', icon: 'id' },
       { label: 'Categories', to: '/merchant/categories', permission: 'view-category', icon: 'grid' },
       { label: 'Products', to: '/merchant/products', permission: 'view-product', icon: 'stack' },
-      { label: 'Cart', to: '/merchant/cart', permission: 'view-product', icon: 'archive' },
-      { label: 'Checkout', to: '/merchant/checkout', permission: 'view-product', icon: 'receipt' }
+      { label: 'Cart', to: '/merchant/cart', permission: 'view-product', icon: 'archive' }
     ]
   }
 ];
@@ -107,8 +106,7 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
           '/merchant/merchants',
           '/merchant/branches',
           '/merchant/products',
-          '/merchant/cart',
-          '/merchant/checkout'
+          '/merchant/cart'
         ]);
         return section.links.filter((link) => clientLinks.has(link.to));
       }
@@ -203,8 +201,7 @@ export default function Sidebar({ permissions = [], authType, profile, onLogout 
                             '/merchant/merchants',
                             '/merchant/branches',
                             '/merchant/products',
-                            '/merchant/cart',
-                            '/merchant/checkout'
+                            '/merchant/cart'
                           ].includes(link.to)
                         )
                       : section.links)

@@ -1490,11 +1490,14 @@ export default function CrudPage({ resource, permissions = [], authType, profile
       window.alert('Your cart is empty.');
       return;
     }
+    if (!selectedPaymentMethodId) {
+      window.alert('Please choose a payment method before confirming the order.');
+      return;
+    }
     try {
-      const payload = {};
-      if (selectedPaymentMethodId) {
-        payload.payment_method_id = Number(selectedPaymentMethodId);
-      }
+      const payload = {
+        payment_method_id: Number(selectedPaymentMethodId)
+      };
       const order = await api.create('buyer/checkout', payload);
       await refreshBuyerCommerceData();
       window.alert(`Order confirmed: ${order?.order_number || order?.id || 'success'}`);
@@ -1678,7 +1681,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                       <option value="">No payment method</option>
                       {paymentMethods.map((method) => (
                         <option key={method.id} value={method.id}>
-                          {method.type}{method.card_last4 ? ` • • • • ${method.card_last4}` : ''}{method.is_default ? ' (default)' : ''}
+                          {method.type}{method.card_last4 ? ` **** ${method.card_last4}` : ''}{method.is_default ? ' (default)' : ''}
                         </option>
                       ))}
                     </select>
@@ -2183,8 +2186,28 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                       <span className="text-sm text-[var(--muted-ink)]">Total</span>
                       <span className="text-xl font-semibold text-[var(--ink)]">{formatCurrency(buyerCart.total_amount)}</span>
                     </div>
+                    <div className="mt-4">
+                      <div className="text-sm font-semibold text-[var(--ink)]">Payment Method</div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <select
+                          className="h-10 min-w-[220px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
+                          value={selectedPaymentMethodId}
+                          onChange={(event) => setSelectedPaymentMethodId(event.target.value)}
+                        >
+                          <option value="">Choose payment method</option>
+                          {paymentMethods.map((method) => (
+                            <option key={method.id} value={method.id}>
+                              {method.type}{method.card_last4 ? ` **** ${method.card_last4}` : ''}{method.is_default ? ' (default)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <Button variant="outline" onClick={addPaymentMethod}>Add Payment Method</Button>
+                      </div>
+                    </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => navigate('/merchant/checkout')}>Proceed to Checkout</Button>
+                      <Button size="sm" variant="secondary" onClick={confirmCheckout} disabled={(buyerCart.items || []).length === 0}>
+                        Confirm Order
+                      </Button>
                       <Button size="sm" variant="outline" onClick={clearBuyerCart}>Clear Cart</Button>
                     </div>
                   </div>
@@ -2198,52 +2221,14 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                   Checkout is available for buyer accounts.
                 </div>
               ) : (
-                <>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                    <div className="text-sm font-semibold text-[var(--ink)]">Cart Summary</div>
-                    {(buyerCart.items || []).length === 0 ? (
-                      <div className="mt-2 text-sm text-[var(--muted-ink)]">No items in cart.</div>
-                    ) : (
-                      <div className="mt-3 grid gap-2">
-                        {(buyerCart.items || []).map((item) => (
-                          <div key={`checkout-${item.id}`} className="flex items-center justify-between text-sm">
-                            <span>{item.name} x{item.quantity}</span>
-                            <span>{formatCurrency(item.subtotal)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-4 border-t border-[var(--border)] pt-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-[var(--muted-ink)]">Total price</span>
-                        <span className="text-xl font-semibold text-[var(--ink)]">{formatCurrency(buyerCart.total_amount)}</span>
-                      </div>
-                    </div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted-ink)]">
+                  Checkout is handled from cart. Choose payment method and confirm order there.
+                  <div className="mt-4">
+                    <Button size="sm" variant="secondary" onClick={() => navigate('/merchant/cart')}>
+                      Go to Cart
+                    </Button>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                    <div className="text-sm font-semibold text-[var(--ink)]">Payment Method</div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <select
-                        className="h-10 min-w-[220px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
-                        value={selectedPaymentMethodId}
-                        onChange={(event) => setSelectedPaymentMethodId(event.target.value)}
-                      >
-                        <option value="">No payment method</option>
-                        {paymentMethods.map((method) => (
-                          <option key={method.id} value={method.id}>
-                            {method.type}{method.card_last4 ? ` •••• ${method.card_last4}` : ''}{method.is_default ? ' (default)' : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <Button variant="outline" onClick={addPaymentMethod}>Add Payment Method</Button>
-                    </div>
-                    <div className="mt-4">
-                      <Button variant="secondary" onClick={confirmCheckout} disabled={(buyerCart.items || []).length === 0}>
-                        Confirm Order
-                      </Button>
-                    </div>
-                  </div>
-                </>
+                </div>
               )}
             </div>
           ) : isClient && resource.key === 'products' ? (
@@ -3138,4 +3123,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     </div>
   );
 }
+
+
 
