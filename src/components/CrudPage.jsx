@@ -1673,21 +1673,6 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                     <Button variant="secondary" onClick={() => navigate('/merchant/cart')} className="h-10">
                       Cart ({buyerCart.total_quantity || 0})
                     </Button>
-                    <select
-                      className="h-10 min-w-[200px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
-                      value={selectedPaymentMethodId}
-                      onChange={(event) => setSelectedPaymentMethodId(event.target.value)}
-                    >
-                      <option value="">No payment method</option>
-                      {paymentMethods.map((method) => (
-                        <option key={method.id} value={method.id}>
-                          {method.type}{method.card_last4 ? ` **** ${method.card_last4}` : ''}{method.is_default ? ' (default)' : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <Button variant="outline" onClick={addPaymentMethod} className="h-10">
-                      Add Payment Method
-                    </Button>
                     <span className="text-xs text-[var(--muted-ink)]">Orders: {buyerOrders.length}</span>
                   </div>
                 )}
