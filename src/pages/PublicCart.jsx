@@ -12,14 +12,59 @@ function formatCurrency(value) {
   return `$${amount.toFixed(2)}`;
 }
 
+function normalizeDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function isValidLuhn(cardNumber) {
+  const digits = normalizeDigits(cardNumber);
+  if (digits.length < 12 || digits.length > 19) {
+    return false;
+  }
+  let sum = 0;
+  let shouldDouble = false;
+  for (let index = digits.length - 1; index >= 0; index -= 1) {
+    let digit = Number(digits[index]);
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) {
+        digit -= 9;
+      }
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return sum % 10 === 0;
+}
+
+function parseExpiry(value) {
+  const cleaned = String(value || '').trim();
+  const match = cleaned.match(/^(\d{2})\s*\/\s*(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  const month = Number(match[1]);
+  const year = Number(`20${match[2]}`);
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return null;
+  }
+  const expiry = new Date(year, month, 0, 23, 59, 59, 999);
+  if (expiry.getTime() < Date.now()) {
+    return null;
+  }
+  return { month, year };
+}
+
 export default function PublicCartPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState({ items: [], total_amount: 0, total_quantity: 0 });
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState('cash_on_delivery');
   const [guest, setGuest] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [card, setCard] = useState({ cardholder_name: '', card_number: '', expiry: '', cvv: '' });
   const [loading, setLoading] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const isCardPayment = selectedPayment === 'credit_card';
 
   const load = async () => {
     try {
@@ -85,14 +130,46 @@ export default function PublicCartPage() {
       window.alert('Select a payment method.');
       return;
     }
+    let paymentDetails;
+    if (isCardPayment) {
+      const cardholderName = String(card.cardholder_name || '').trim();
+      const cardNumberDigits = normalizeDigits(card.card_number);
+      const expiryParts = parseExpiry(card.expiry);
+      const cvvDigits = normalizeDigits(card.cvv);
+      if (!cardholderName) {
+        window.alert('Cardholder name is required.');
+        return;
+      }
+      if (!isValidLuhn(cardNumberDigits)) {
+        window.alert('Enter a valid card number.');
+        return;
+      }
+      if (!expiryParts) {
+        window.alert('Enter a valid expiry in MM/YY format.');
+        return;
+      }
+      if (!/^\d{3,4}$/.test(cvvDigits)) {
+        window.alert('Enter a valid CVV (3 or 4 digits).');
+        return;
+      }
+      paymentDetails = {
+        cardholder_name: cardholderName,
+        card_number: cardNumberDigits,
+        expiry_month: expiryParts.month,
+        expiry_year: expiryParts.year,
+        cvv: cvvDigits
+      };
+    }
     try {
       setPlacingOrder(true);
       const order = await api.publicCreate('checkout', {
         payment_method: selectedPayment,
-        ...guest
+        ...guest,
+        payment_details: paymentDetails
       });
       await load();
       window.alert(`Order placed successfully: ${order?.order_number || order?.id || ''}`);
+      setCard({ cardholder_name: '', card_number: '', expiry: '', cvv: '' });
     } catch (err) {
       window.alert(err.message || 'Failed to place order.');
     } finally {
@@ -166,6 +243,42 @@ export default function PublicCartPage() {
                       <option key={method.id} value={method.id}>{method.label || method.type}</option>
                     ))}
                   </select>
+                  {isCardPayment ? (
+                    <>
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-xs text-[var(--muted-ink)]">
+                        Demo test card: `4242 4242 4242 4242` with any future MM/YY and CVV `123`.
+                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Cardholder name"
+                        value={card.cardholder_name}
+                        onChange={(event) => setCard((prev) => ({ ...prev, cardholder_name: event.target.value }))}
+                      />
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Card number"
+                        value={card.card_number}
+                        onChange={(event) => setCard((prev) => ({ ...prev, card_number: event.target.value }))}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Expiry (MM/YY)"
+                          value={card.expiry}
+                          onChange={(event) => setCard((prev) => ({ ...prev, expiry: event.target.value }))}
+                        />
+                        <Input
+                          type="password"
+                          inputMode="numeric"
+                          placeholder="CVV"
+                          value={card.cvv}
+                          onChange={(event) => setCard((prev) => ({ ...prev, cvv: event.target.value }))}
+                        />
+                      </div>
+                    </>
+                  ) : null}
                   <Input
                     type="text"
                     placeholder="First name (optional)"
