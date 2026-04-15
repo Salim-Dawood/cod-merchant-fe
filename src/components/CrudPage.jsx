@@ -172,12 +172,19 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
   const isClient = authType === 'client' || (isMerchant && roleName === 'client');
   const isBuyerAuth = authType === 'client';
-  const canRead = isMerchant || authType === 'client'
-    ? true
-    : resource.permissions?.read
-    ? permissions.includes(resource.permissions.read)
-    : true;
+  const canRead =
+    authType === 'client'
+      ? true
+      : resource.permissions?.read
+      ? permissions.includes(resource.permissions.read)
+      : true;
   const canWrite = !isClient;
+  const canCreate =
+    canWrite && (!resource.permissions?.create || permissions.includes(resource.permissions.create));
+  const canUpdate =
+    canWrite && (!resource.permissions?.update || permissions.includes(resource.permissions.update));
+  const canDelete =
+    canWrite && (!resource.permissions?.delete || permissions.includes(resource.permissions.delete));
   const [rows, setRows] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -320,6 +327,10 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     try {
       setLoading(true);
       setError('');
+      if (!canRead) {
+        setRows([]);
+        return;
+      }
       let clientBranches = [];
       let clientMerchants = [];
       if (isClient) {
@@ -502,7 +513,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     } finally {
       setLoading(false);
     }
-  }, [resource.key, isClient, isBuyerAuth]);
+  }, [resource.key, isClient, isBuyerAuth, canRead]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -1650,14 +1661,8 @@ export default function CrudPage({ resource, permissions = [], authType, profile
             <span className="text-xs text-[var(--muted-ink)]">
               {loading ? 'Loading' : String(visibleResultCount)}
             </span>
-            {canWrite && (
-              (isMerchant || !resource.permissions?.create ? (
-                <Button size="sm" onClick={openCreate}>New</Button>
-              ) : (
-                permissions.includes(resource.permissions.create) && (
-                  <Button size="sm" onClick={openCreate}>New</Button>
-                )
-              ))
+            {canCreate && (
+              <Button size="sm" onClick={openCreate}>New</Button>
             )}
           </div>
         </div>
@@ -2581,16 +2586,12 @@ export default function CrudPage({ resource, permissions = [], authType, profile
                                   Reset Password
                                 </Button>
                               )}
-                              {(isMerchant ||
-                                !resource.permissions?.update ||
-                                permissions.includes(resource.permissions.update)) && (
+                              {canUpdate && (
                                 <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
                                   Edit
                                 </Button>
                               )}
-                              {(isMerchant ||
-                                !resource.permissions?.delete ||
-                                permissions.includes(resource.permissions.delete)) && (
+                              {canDelete && (
                                 <Button size="sm" variant="destructive" onClick={() => openDelete(row)}>
                                   Delete
                                 </Button>
