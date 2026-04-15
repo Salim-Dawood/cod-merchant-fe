@@ -285,6 +285,11 @@ export default function LoginPage({ onSuccess }) {
                   ? 'Create a buyer account with your personal details.'
                   : 'Use your email and password. You will be redirected automatically based on your role.'}
               </p>
+              <div className="mt-3">
+                <Button type="button" variant="outline" onClick={() => navigate('/')}>
+                  Back to Home
+                </Button>
+              </div>
             </div>
 
             {success && (
