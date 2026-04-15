@@ -263,42 +263,7 @@ export default function LoginPage({ onSuccess }) {
 
   return (
     <div className="login-page min-h-screen px-4 py-12 text-[var(--ink)]">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
-        <div className="glass-panel relative overflow-hidden rounded-[32px] p-6 sm:p-8 lg:p-10">
-          <div className="absolute -right-24 -top-24 h-52 w-52 rounded-full bg-[var(--accent)]/20 blur-3xl" />
-          <div className="absolute -bottom-24 left-10 h-60 w-60 rounded-full bg-[var(--sun)]/20 blur-3xl" />
-          <div className="relative z-10 flex h-full flex-col">
-            <div>
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.4em] text-[var(--muted-ink)]">
-                Merchant Office
-              </p>
-              <h1 className="font-display mt-4 text-4xl leading-tight">
-                COD Merchant Studio
-              </h1>
-              <p className="mt-4 text-sm text-[var(--muted-ink)]">
-                A unified command layer for merchants, branches, buyers, and platform admins.
-              </p>
-            </div>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Workflow</p>
-                <p className="mt-2 text-base font-semibold">One login, role aware</p>
-                <p className="mt-2 text-xs text-[var(--muted-ink)]">
-                  Sign in once with email and password, then land on the right dashboard automatically.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--muted-ink)]">Recovery</p>
-                <p className="mt-2 text-base font-semibold">Reset by email</p>
-                <p className="mt-2 text-xs text-[var(--muted-ink)]">
-                  Enter your email and receive a reset link without choosing your account type first.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div className="mx-auto w-full max-w-xl">
         <div className="surface-panel rounded-[32px] p-6 sm:p-8 lg:p-10">
           <form className="grid gap-5" onSubmit={handleSubmit} noValidate>
             <div>
