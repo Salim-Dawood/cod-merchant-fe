@@ -172,19 +172,18 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const roleName = profile?.role_name ? String(profile.role_name).toLowerCase() : '';
   const isClient = authType === 'client' || (isMerchant && roleName === 'client');
   const isBuyerAuth = authType === 'client';
-  const canRead =
-    authType === 'client'
-      ? true
-      : resource.permissions?.read
-      ? permissions.includes(resource.permissions.read)
-      : true;
+  const canRead = isMerchant || authType === 'client'
+    ? true
+    : resource.permissions?.read
+    ? permissions.includes(resource.permissions.read)
+    : true;
   const canWrite = !isClient;
   const canCreate =
-    canWrite && (!resource.permissions?.create || permissions.includes(resource.permissions.create));
+    canWrite && (isMerchant || !resource.permissions?.create || permissions.includes(resource.permissions.create));
   const canUpdate =
-    canWrite && (!resource.permissions?.update || permissions.includes(resource.permissions.update));
+    canWrite && (isMerchant || !resource.permissions?.update || permissions.includes(resource.permissions.update));
   const canDelete =
-    canWrite && (!resource.permissions?.delete || permissions.includes(resource.permissions.delete));
+    canWrite && (isMerchant || !resource.permissions?.delete || permissions.includes(resource.permissions.delete));
   const [rows, setRows] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
