@@ -59,11 +59,12 @@ export default function PublicCartPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState({ items: [], total_amount: 0, total_quantity: 0 });
   const [paymentMethods, setPaymentMethods] = useState([]);
-  const [selectedPayment, setSelectedPayment] = useState('cash_on_delivery');
+  const [selectedPayment, setSelectedPayment] = useState('credit_card');
   const [guest, setGuest] = useState({ first_name: '', last_name: '', email: '', phone: '' });
   const [card, setCard] = useState({ cardholder_name: '', card_number: '', expiry: '', cvv: '' });
   const [loading, setLoading] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [message, setMessage] = useState(null);
   const isCardPayment = selectedPayment === 'credit_card';
 
   const load = async () => {
@@ -82,13 +83,13 @@ export default function PublicCartPage() {
       }
 
       if (methodsResult.status === 'fulfilled') {
-        const methodItems = Array.isArray(methodsResult.value) ? methodsResult.value : [];
+        const methodItems = (Array.isArray(methodsResult.value) ? methodsResult.value : []).filter(
+          (method) => method?.id === 'credit_card'
+        );
         setPaymentMethods(methodItems);
-        if (methodItems.length && !methodItems.some((method) => method.id === selectedPayment)) {
-          setSelectedPayment(methodItems[0].id);
-        }
+        setSelectedPayment('credit_card');
       } else {
-        setPaymentMethods([]);
+        setPaymentMethods([{ id: 'credit_card', type: 'credit_card', label: 'Credit Card' }]);
       }
     } finally {
       setLoading(false);
@@ -107,8 +108,9 @@ export default function PublicCartPage() {
     try {
       const next = await api.publicUpdate('cart/items', itemId, { quantity });
       setCart(next || { items: [], total_amount: 0, total_quantity: 0 });
+      setMessage(null);
     } catch (err) {
-      window.alert(err.message || 'Failed to update cart quantity.');
+      setMessage({ type: 'error', text: err.message || 'Failed to update cart quantity.' });
     }
   };
 
@@ -116,18 +118,19 @@ export default function PublicCartPage() {
     try {
       const next = await api.publicRemove('cart/items', itemId);
       setCart(next || { items: [], total_amount: 0, total_quantity: 0 });
+      setMessage(null);
     } catch (err) {
-      window.alert(err.message || 'Failed to remove item from cart.');
+      setMessage({ type: 'error', text: err.message || 'Failed to remove item from cart.' });
     }
   };
 
   const checkout = async () => {
     if (!cart.items?.length) {
-      window.alert('Your cart is empty.');
+      setMessage({ type: 'error', text: 'Your cart is empty.' });
       return;
     }
-    if (!selectedPayment) {
-      window.alert('Select a payment method.');
+    if (selectedPayment !== 'credit_card') {
+      setMessage({ type: 'error', text: 'Credit card payment is required for checkout.' });
       return;
     }
     let paymentDetails;
@@ -137,19 +140,19 @@ export default function PublicCartPage() {
       const expiryParts = parseExpiry(card.expiry);
       const cvvDigits = normalizeDigits(card.cvv);
       if (!cardholderName) {
-        window.alert('Cardholder name is required.');
+        setMessage({ type: 'error', text: 'Cardholder name is required.' });
         return;
       }
       if (!isValidLuhn(cardNumberDigits)) {
-        window.alert('Enter a valid card number.');
+        setMessage({ type: 'error', text: 'Enter a valid card number.' });
         return;
       }
       if (!expiryParts) {
-        window.alert('Enter a valid expiry in MM/YY format.');
+        setMessage({ type: 'error', text: 'Enter a valid expiry in MM/YY format.' });
         return;
       }
       if (!/^\d{3,4}$/.test(cvvDigits)) {
-        window.alert('Enter a valid CVV (3 or 4 digits).');
+        setMessage({ type: 'error', text: 'Enter a valid CVV (3 or 4 digits).' });
         return;
       }
       paymentDetails = {
@@ -168,10 +171,10 @@ export default function PublicCartPage() {
         payment_details: paymentDetails
       });
       await load();
-      window.alert(`Order placed successfully: ${order?.order_number || order?.id || ''}`);
+      setMessage({ type: 'success', text: `Order placed successfully: ${order?.order_number || order?.id || ''}` });
       setCard({ cardholder_name: '', card_number: '', expiry: '', cvv: '' });
     } catch (err) {
-      window.alert(err.message || 'Failed to place order.');
+      setMessage({ type: 'error', text: err.message || 'Failed to place order.' });
     } finally {
       setPlacingOrder(false);
     }
@@ -201,6 +204,17 @@ export default function PublicCartPage() {
             <div className="text-sm text-[var(--muted-ink)]">Loading cart...</div>
           ) : (
             <>
+              {message ? (
+                <div
+                  className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+                    message.type === 'success'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border-red-200 bg-red-50 text-red-700'
+                  }`}
+                >
+                  {message.text}
+                </div>
+              ) : null}
               <div className="flex items-center justify-between">
                 <h2 className="font-display text-xl">Items</h2>
                 <span className="text-sm text-[var(--muted-ink)]">{cart.total_quantity || 0} items</span>
@@ -238,6 +252,7 @@ export default function PublicCartPage() {
                     className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"
                     value={selectedPayment}
                     onChange={(event) => setSelectedPayment(event.target.value)}
+                    disabled
                   >
                     {paymentMethods.map((method) => (
                       <option key={method.id} value={method.id}>{method.label || method.type}</option>
