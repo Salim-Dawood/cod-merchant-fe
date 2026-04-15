@@ -210,6 +210,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [productFiles, setProductFiles] = useState([]);
   const [removedImageIds, setRemovedImageIds] = useState([]);
+  const [saveLoading, setSaveLoading] = useState(false);
   const productImageInputRef = useRef(null);
   const [merchantOptions, setMerchantOptions] = useState([]);
   const [clientMerchantRows, setClientMerchantRows] = useState([]);
@@ -680,7 +681,11 @@ export default function CrudPage({ resource, permissions = [], authType, profile
   };
 
   const handleSubmit = async () => {
+    if (saveLoading) {
+      return;
+    }
     try {
+      setSaveLoading(true);
       setError('');
       if (!validateForm()) {
         setError('Please fill in the required fields.');
@@ -832,6 +837,9 @@ export default function CrudPage({ resource, permissions = [], authType, profile
         }
       }
       setError(err.message || 'Failed to save');
+      window.alert(err.message || 'Failed to save');
+    } finally {
+      setSaveLoading(false);
     }
   };
 
@@ -3024,11 +3032,18 @@ export default function CrudPage({ resource, permissions = [], authType, profile
               </>
             )}
           </div>
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+              {error}
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
+            <Button variant="secondary" onClick={() => setOpen(false)} disabled={saveLoading}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>{editRow ? 'Save' : 'Create'}</Button>
+            <Button onClick={handleSubmit} disabled={saveLoading}>
+              {saveLoading ? 'Saving...' : editRow ? 'Save' : 'Create'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
