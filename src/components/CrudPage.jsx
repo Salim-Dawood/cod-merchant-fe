@@ -179,7 +179,7 @@ export default function CrudPage({ resource, permissions = [], authType, profile
     : true;
   const canWrite = !isClient;
   const [rows, setRows] = useState([]);
-  const [, setError] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
