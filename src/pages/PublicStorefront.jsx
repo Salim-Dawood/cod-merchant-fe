@@ -147,8 +147,7 @@ export default function PublicStorefront() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => navigate('/login')}>Sign In</Button>
-              <Button onClick={() => navigate('/login')}>Sign Up</Button>
+              <Button onClick={() => navigate('/register')}>Sign Up</Button>
             </div>
           </div>
         </div>
@@ -271,7 +270,7 @@ export default function PublicStorefront() {
                 </Button>
               </div>
               <p className="mt-3 text-xs text-[var(--muted-ink)]">
-                Want full account access? <Link to="/login" className="underline">Sign up here</Link>.
+                Want full account access? <Link to="/register" className="underline">Sign up here</Link>.
               </p>
             </div>
           </aside>

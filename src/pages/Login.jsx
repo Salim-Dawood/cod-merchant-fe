@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { auth } from '../lib/auth';
@@ -16,6 +16,7 @@ async function requestResetLinkByEmail(email) {
 export default function LoginPage({ onSuccess }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isRegisterRoute = location.pathname === '/register';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -46,12 +47,22 @@ export default function LoginPage({ onSuccess }) {
       setSuccess('');
       return;
     }
+    if (isRegisterRoute) {
+      if (mode !== 'client-register') {
+        setMode('client-register');
+      }
+      return;
+    }
     if (mode === 'reset-password') {
       setMode('login');
       setResetActor('');
       setResetToken('');
+      return;
     }
-  }, [location.search, mode]);
+    if (mode === 'client-register') {
+      setMode('login');
+    }
+  }, [isRegisterRoute, location.search, mode]);
 
   const validateForm = () => {
     const nextErrors = {};
@@ -250,13 +261,6 @@ export default function LoginPage({ onSuccess }) {
     }
   };
 
-  const modeButtonClass = (value) =>
-    `flex-1 rounded-2xl border px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition ${
-      mode === value
-        ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)] shadow-sm'
-        : 'border-[var(--border)] text-[var(--muted-ink)] hover:bg-[var(--surface-soft)]'
-    }`;
-
   return (
     <div className="login-page min-h-screen px-4 py-12 text-[var(--ink)]">
       <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
@@ -317,46 +321,6 @@ export default function LoginPage({ onSuccess }) {
                   : 'Use your email and password. You will be redirected automatically based on your role.'}
               </p>
             </div>
-
-            {mode !== 'reset-password' && (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setSuccess('');
-                    setError('');
-                  }}
-                  className={modeButtonClass('login')}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('client-register');
-                    setSuccess('');
-                    setError('');
-                    setPassword('');
-                  }}
-                  className={modeButtonClass('client-register')}
-                >
-                  Buyer Register
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('request-reset');
-                    setSuccess('');
-                    setError('');
-                    setPassword('');
-                  }}
-                  className={modeButtonClass('request-reset')}
-                >
-                  Reset Password
-                </button>
-              </div>
-            )}
 
             {success && (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
@@ -475,6 +439,42 @@ export default function LoginPage({ onSuccess }) {
                   ? 'Create Buyer'
                   : 'Sign In'}
               </Button>
+              {mode === 'client-register' ? (
+                <p className="text-xs text-[var(--muted-ink)]">
+                  Already have an account?{' '}
+                  <Link to="/login" className="underline">
+                    Log in
+                  </Link>
+                </p>
+              ) : mode === 'login' ? (
+                <div className="flex items-center justify-between gap-3 text-xs text-[var(--muted-ink)]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('request-reset');
+                      setSuccess('');
+                      setError('');
+                      setPassword('');
+                    }}
+                    className="underline"
+                  >
+                    Forgot password?
+                  </button>
+                  <span>
+                    Need an account?{' '}
+                    <Link to="/register" className="underline">
+                      Sign up
+                    </Link>
+                  </span>
+                </div>
+              ) : (
+                <p className="text-xs text-[var(--muted-ink)]">
+                  Remembered your password?{' '}
+                  <Link to="/login" className="underline">
+                    Sign in
+                  </Link>
+                </p>
+              )}
               <p className="text-xs text-[var(--muted-ink)]">
                 By continuing, you confirm you have permission to access this workspace.
               </p>
