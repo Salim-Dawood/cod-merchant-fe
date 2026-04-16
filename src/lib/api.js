@@ -68,6 +68,7 @@ export const api = {
     method: 'DELETE'
   }),
   publicList: (resource) => request(`/public/${resource}`),
+  publicGet: (resource, id) => request(`/public/${resource}/${id}`),
   publicCreate: (resource, data) => request(`/public/${resource}`, {
     method: 'POST',
     body: JSON.stringify(data)

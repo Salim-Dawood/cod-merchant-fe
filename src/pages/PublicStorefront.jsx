@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -74,6 +74,14 @@ export default function PublicStorefront() {
     }
   };
 
+  const getProductImages = (product) => {
+    const urls = Array.isArray(product?.image_urls) ? product.image_urls.filter(Boolean) : [];
+    if (urls.length) {
+      return urls;
+    }
+    return product?.image_url ? [product.image_url] : [];
+  };
+
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f5fbf8_0%,#ffffff_30%,#f7f8fa_100%)] text-[var(--ink)]">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">
@@ -90,7 +98,7 @@ export default function PublicStorefront() {
               <Button variant="outline" onClick={() => navigate('/cart')}>
                 Cart ({cart.total_quantity || 0})
               </Button>
-              <Button onClick={() => navigate('/register')}>Sign Up</Button>
+              <Button onClick={() => navigate('/login')}>Login</Button>
             </div>
           </div>
         </div>
@@ -119,28 +127,47 @@ export default function PublicStorefront() {
                 No products found.
               </div>
             ) : (
-              filteredProducts.map((product) => (
-                <article key={product.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-                  <div className="h-40 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]">
-                    {product.image_url ? (
-                      <img src={product.image_url} alt={product.name || `Product #${product.id}`} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-[var(--muted-ink)]">No image</div>
-                    )}
-                  </div>
-                  <div className="mt-3">
-                    <h3 className="text-base font-semibold text-[var(--ink)]">{product.name || `Product #${product.id}`}</h3>
-                    <p className="mt-1 line-clamp-2 text-sm text-[var(--muted-ink)]">{product.description || 'No description.'}</p>
-                    <p className="mt-2 text-xs text-[var(--muted-ink)]">{product.merchant_name} - {product.branch_name}</p>
-                    <p className="mt-2 text-lg font-semibold text-[var(--ink)]">{formatCurrency(product.base_price)}</p>
-                  </div>
-                  <div className="mt-3">
-                    <Button className="w-full" onClick={() => addToCart(product.id)}>Add To Cart</Button>
-                  </div>
-                </article>
-              ))
+              filteredProducts.map((product) => {
+                const productImages = getProductImages(product);
+                return (
+                  <article key={product.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+                    <div className="h-40 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]">
+                      {productImages[0] ? (
+                        <img src={productImages[0]} alt={product.name || `Product #${product.id}`} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-[var(--muted-ink)]">No image</div>
+                      )}
+                    </div>
+                    {productImages.length > 1 ? (
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {productImages.slice(0, 2).map((url, index) => (
+                          <div key={`${url}-${index}`} className="h-16 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]">
+                            <img src={url} alt={`${product.name || `Product #${product.id}`} ${index + 1}`} className="h-full w-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="mt-3">
+                      <h3 className="text-base font-semibold text-[var(--ink)]">{product.name || `Product #${product.id}`}</h3>
+                      <p className="mt-1 line-clamp-2 text-sm text-[var(--muted-ink)]">{product.description || 'No description.'}</p>
+                      <p className="mt-2 text-xs text-[var(--muted-ink)]">{product.merchant_name} - {product.branch_name}</p>
+                      <p className="mt-1 text-xs text-[var(--muted-ink)]">
+                        {Math.max(1, productImages.length)} image(s)
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-[var(--ink)]">{formatCurrency(product.base_price)}</p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <Button variant="outline" onClick={() => navigate(`/product/${product.id}`)}>Details</Button>
+                      <Button onClick={() => addToCart(product.id)}>Add To Cart</Button>
+                    </div>
+                  </article>
+                );
+              })
             )}
           </div>
+          <p className="text-center text-xs text-[var(--muted-ink)]">
+            Already have an account? <Link to="/login" className="underline">Login</Link>. New here? <Link to="/register" className="underline">Sign up</Link>.
+          </p>
         </div>
       </div>
     </div>

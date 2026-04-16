@@ -7,6 +7,7 @@ import { auth } from './lib/auth';
 import LoginPage from './pages/Login';
 import PublicStorefront from './pages/PublicStorefront';
 import PublicCartPage from './pages/PublicCart';
+import PublicProductDetail from './pages/PublicProductDetail';
 
 const routes = [
   ...resources.platform.map((resource) => ({
@@ -180,6 +181,22 @@ export default function App() {
               <Navigate to="/merchant/cart" replace />
             ) : (
               <PublicCartPage />
+            )
+          ) : (
+            <div className="flex min-h-screen items-center justify-center text-sm text-[var(--muted-ink)]">
+              Loading session...
+            </div>
+          )
+        }
+      />
+      <Route
+        path="/product/:id"
+        element={
+          authReady ? (
+            authed ? (
+              <Navigate to="/merchant/products" replace />
+            ) : (
+              <PublicProductDetail />
             )
           ) : (
             <div className="flex min-h-screen items-center justify-center text-sm text-[var(--muted-ink)]">
