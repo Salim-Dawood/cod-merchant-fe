@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import ProductImageCarousel from '../components/ProductImageCarousel';
 
 function formatCurrency(value) {
   const amount = Number(value || 0);
@@ -131,28 +132,19 @@ export default function PublicStorefront() {
                 const productImages = getProductImages(product);
                 return (
                   <article key={product.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-                    <div className="h-40 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]">
-                      {productImages[0] ? (
-                        <img src={productImages[0]} alt={product.name || `Product #${product.id}`} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-sm text-[var(--muted-ink)]">No image</div>
-                      )}
-                    </div>
-                    {productImages.length > 1 ? (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        {productImages.slice(0, 2).map((url, index) => (
-                          <div key={`${url}-${index}`} className="h-16 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]">
-                            <img src={url} alt={`${product.name || `Product #${product.id}`} ${index + 1}`} className="h-full w-full object-cover" />
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
+                    <ProductImageCarousel
+                      images={productImages}
+                      alt={product.name || `Product #${product.id}`}
+                      heightClassName="h-40"
+                      showDots={productImages.length > 1}
+                      showCounter={productImages.length > 1}
+                    />
                     <div className="mt-3">
                       <h3 className="text-base font-semibold text-[var(--ink)]">{product.name || `Product #${product.id}`}</h3>
                       <p className="mt-1 line-clamp-2 text-sm text-[var(--muted-ink)]">{product.description || 'No description.'}</p>
                       <p className="mt-2 text-xs text-[var(--muted-ink)]">{product.merchant_name} - {product.branch_name}</p>
                       <p className="mt-1 text-xs text-[var(--muted-ink)]">
-                        {Math.max(1, productImages.length)} image(s)
+                        {productImages.length} image(s)
                       </p>
                       <p className="mt-2 text-lg font-semibold text-[var(--ink)]">{formatCurrency(product.base_price)}</p>
                     </div>

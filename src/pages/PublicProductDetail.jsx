@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { Button } from '../components/ui/button';
+import ProductImageCarousel from '../components/ProductImageCarousel';
 
 function formatCurrency(value) {
   const amount = Number(value || 0);
@@ -15,7 +16,6 @@ export default function PublicProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
-  const [activeImage, setActiveImage] = useState('');
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -34,8 +34,6 @@ export default function PublicProductDetail() {
         }
         const nextProduct = productResult.value;
         setProduct(nextProduct);
-        const nextImages = Array.isArray(nextProduct?.image_urls) ? nextProduct.image_urls : [];
-        setActiveImage(nextImages[0] || nextProduct?.image_url || '');
         if (cartResult.status === 'fulfilled') {
           setCartCount(Number(cartResult.value?.total_quantity || 0));
         } else {
@@ -100,27 +98,13 @@ export default function PublicProductDetail() {
           ) : (
             <div className="grid gap-5 lg:grid-cols-[1.1fr,1fr]">
               <div className="space-y-3">
-                <div className="h-72 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] sm:h-[420px]">
-                  {activeImage ? (
-                    <img src={activeImage} alt={product.name || `Product #${product.id}`} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-[var(--muted-ink)]">No image</div>
-                  )}
-                </div>
-                {images.length > 1 ? (
-                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-                    {images.map((url, index) => (
-                      <button
-                        key={`${url}-${index}`}
-                        type="button"
-                        onClick={() => setActiveImage(url)}
-                        className={`h-16 overflow-hidden rounded-lg border ${activeImage === url ? 'border-[var(--ink)]' : 'border-[var(--border)]'}`}
-                      >
-                        <img src={url} alt={`Thumbnail ${index + 1}`} className="h-full w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
+                <ProductImageCarousel
+                  images={images}
+                  alt={product.name || `Product #${product.id}`}
+                  heightClassName="h-72 sm:h-[420px]"
+                  showDots={images.length > 1}
+                  showCounter={images.length > 1}
+                />
               </div>
 
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
